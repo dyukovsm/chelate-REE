@@ -26,6 +26,17 @@ import io
 
 from files.python_files import names
 from files.python_files import misc_funct
+from files.python_files.job_tester import (
+    init_written,
+    mdp_written,
+    select_metals,
+    eq_nvt_post,
+    eq_npt_post_beren,
+    eq_canon_post,
+    pro_canon_post,
+    free_energy_bar_copied,
+    data_collected
+)
 
 GROMACS_PREFIX = 'gmx' # "/usr/local/gromacs/bin/gmx"
 
@@ -39,143 +50,6 @@ MIN_HOURS = 2.0
 MID_HOURS = 8.0
 DAY_WAIT = 24.0
 TWO_DAYS = 48.0
-
-# Data filenames and locations
-GENERAL_LOCAL_DATA = 'raw_general_data_for'
-GENERAL_GLOBAL_DATA = 'aggregate_general_Data'
-
-
-@FlowProject.label
-def init_written(job):
-    with job:
-        test_passed = False
-        for i in names.INIT_FILE_LIST:
-            if job.isfile(i):
-                test_passed = True
-            else:
-                test_passed = False
-                break
-    return test_passed
-
-
-@FlowProject.label
-def mdp_written(job):
-    with job:
-        test_passed = False
-        for i in names.MDP_FILE_LIST:
-            if job.isfile(i):
-                test_passed = True
-            else:
-                test_passed = False
-                break
-    return test_passed
-
-
-@FlowProject.label
-def select_metals(job):
-    with job:
-        test_passed = False
-        metals_to_run = ['Fe', 'Gd', 'Hf']
-        for metal in metals_to_run:
-            if job.sp.metal == metal:
-                test_passed = True
-                break
-    return test_passed
-
-
-@FlowProject.label
-def eq_nvt_post(job):
-    with job:
-        test_passed = False
-        if job.isfile(f"{names.NAME_EQ_NVT}.log"):
-            with open(f"{names.NAME_EQ_NVT}.log", "r") as file_with_lines:
-                lines = file_with_lines.readlines()
-            for single_line in lines:
-                if "Received the " in single_line:
-                    if " signal, stopping within" in single_line:
-                        test_passed = False
-                        break
-                if "Finished mdrun on " in single_line:
-                    test_passed = True
-                    break
-    return test_passed
-
-
-@FlowProject.label
-def eq_npt_post_beren(job):
-    with job:
-        test_passed = False
-        if job.isfile(f"{names.NAME_EQ_NPT_BERENDSEN}.log"):
-            with open(f"{names.NAME_EQ_NPT_BERENDSEN}.log", "r") as file_with_lines:
-                lines = file_with_lines.readlines()
-            for single_line in lines:
-                if "Received the " in single_line:
-                    if " signal, stopping within" in single_line:
-                        test_passed = False
-                        break
-                if "Finished mdrun on " in single_line:
-                    test_passed = True
-                    break
-    return test_passed
-
-
-@FlowProject.label
-def eq_canon_post(job):
-    with job:
-        test_passed = False
-        if job.isfile(f"{names.NAME_EQ_CANON}.log"):
-            with open(f"{names.NAME_EQ_CANON}.log", "r") as file_with_lines:
-                lines = file_with_lines.readlines()
-            for single_line in lines:
-                if "Received the " in single_line:
-                    if " signal, stopping within" in single_line:
-                        test_passed = False
-                        break
-                if "Finished mdrun on " in single_line:
-                    test_passed = True
-                    break
-    return test_passed
-
-
-@FlowProject.label
-def pro_canon_post(job):
-    with job:
-        test_passed = False
-        if job.isfile(f"{names.NAME_PRO_CANON}.log"):
-            with open(f"{names.NAME_PRO_CANON}.log", "r") as file_with_lines:
-                lines = file_with_lines.readlines()
-            for single_line in lines:
-                if "Received the " in single_line:
-                    if " signal, stopping within" in single_line:
-                        test_passed = False
-                        break
-                if "Finished mdrun on " in single_line:
-                    test_passed = True
-                    break
-    return test_passed
-
-
-@FlowProject.label
-def free_energy_bar_copied(job):
-    with job:
-        test_passed = False
-        if job.isfile(f'{names.NAME_PRO_CANON}.xvg'):
-            current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
-            if job.isfile(f'{names.NAME_PRO_CANON}_{current_lambda}.xvg'):
-                test_passed = True
-    return test_passed
-
-
-@FlowProject.label
-def data_collected(job):
-    test_passed = False
-    local_name_of_file = f'{GENERAL_GLOBAL_DATA}.txt'
-    if os.path.exists(local_name_of_file):
-        with open(local_name_of_file, "r") as f:
-            contents = f.read()
-            if job.id in contents:
-                test_passed = True
-    return test_passed
 
 
 project = signac.get_project()
@@ -427,18 +301,18 @@ def GRAPH_AND_COLLECT_PROPERTIES(job):
         newline_string = "\n".join(str(results[prop]) for prop in properties_of_interest if prop in results)
 
         p = subprocess.Popen(
-            [f'{GROMACS_PREFIX}', '-quiet', 'energy', '-f', f'{names.NAME_PRO_CANON}.edr', '-o', f'{GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.xvg'],
+            [f'{GROMACS_PREFIX}', '-quiet', 'energy', '-f', f'{names.NAME_PRO_CANON}.edr', '-o', f'{names.GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.xvg'],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE
         )
         out, err = p.communicate(f'{newline_string}'.encode('utf-8'))
         capture = out.decode()
 
-        with open(f'{GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.txt', 'w') as Dummy_GMX_output:
+        with open(f'{names.GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.txt', 'w') as Dummy_GMX_output:
             Dummy_GMX_output.write(capture)
 
-        with open(f'{GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.txt', 'r') as Dummy_GMX_output:
-            with open(f"../../{GENERAL_GLOBAL_DATA}.txt", 'a') as aggregate_surTenFile:
+        with open(f'{names.GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.txt', 'r') as Dummy_GMX_output:
+            with open(f"../../{names.GENERAL_GLOBAL_DATA}.txt", 'a') as aggregate_surTenFile:
                 for a_single_line in Dummy_GMX_output:
                     for property_str in properties_of_interest:
                         search_property_str_dict = properties_of_interest_to_search_string_dict[property_str]
@@ -461,7 +335,7 @@ def GRAPH_AND_COLLECT_PROPERTIES(job):
                     f" {properties_of_interest_storage_dict['Density']:<42} \n"
                 )
 
-        with open(f'{GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.xvg', 'r') as xvg_png_datasource:
+        with open(f'{names.GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.xvg', 'r') as xvg_png_datasource:
             lines = xvg_png_datasource.readlines()
 
         header_lines = []
@@ -517,7 +391,7 @@ def GRAPH_AND_COLLECT_PROPERTIES(job):
 
         axes[-1].set_xlabel(xaxis_label)
         plt.tight_layout()
-        plt.savefig(f'{GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.png')
+        plt.savefig(f'{names.GENERAL_LOCAL_DATA}_{names.NAME_PRO_CANON}.png')
         plt.close()
 
 

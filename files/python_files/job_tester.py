@@ -121,66 +121,136 @@ def build_input_starter(job):
     
 ##################################################################################
 
+# --- Active Workflow Condition & Label Functions ---
 
 @FlowProject.label
-def eq_nvt_post_em_files_present(job):
-    with(job):
-        bool_job = False
-        files_to_check = return_file_with_extensions(
-            file_names=[f'{names.NAME_EQ_NVT}'],
-            extension_list=extension_list_of_common_files
-        )
-        bool_job = test_existence_simple(job,files_to_check)
-        return bool_job
-    
-    
-@FlowProject.label
-def eq_nvt_post_em_done(job):
-    with(job):
-        
-        bool_job = look_in_file(job,[f"{names.NAME_EQ_NVT}.log"],"Finished",check_for_not=True,check_for_not_str='Received the TERM')
-        return bool_job
-    
-    
-##################################################################################
+def init_written(job):
+    with job:
+        test_passed = False
+        for i in names.INIT_FILE_LIST:
+            if job.isfile(i):
+                test_passed = True
+            else:
+                test_passed = False
+                break
+    return test_passed
 
 
 @FlowProject.label
-def build_surfTen_nvt_done(job):
-    with(job):
-        bool_job = False
-        files_to_check = return_file_with_extensions(
-            file_names=[f'{names.NAME_ELONGATED}'],
-            extension_list=['.gro']
-        )
-        bool_job = test_existence_simple(job,files_to_check)
-        return bool_job
-    
-    
-##################################################################################
+def mdp_written(job):
+    with job:
+        test_passed = False
+        for i in names.MDP_FILE_LIST:
+            if job.isfile(i):
+                test_passed = True
+            else:
+                test_passed = False
+                break
+    return test_passed
 
 
 @FlowProject.label
-def eq_nvt_surften_done(job):
-    with(job):
-        
-        last_key_oneliner = list(names.EQ_SURFTEN_CHUNK_TO_STARTING_GRO_FILE.keys())[-1]
-        bool_job = look_in_file(job,[f"{names.EQ_SURFTEN_CHUNK_TO_STARTING_GRO_FILE[last_key_oneliner]}.log"],"Finished",check_for_not=True,check_for_not_str='Received the TERM')
-        return bool_job
-        
-          
-##################################################################################
+def select_metals(job):
+    with job:
+        test_passed = False
+        metals_to_run = ['Fe', 'Gd', 'Hf']
+        for metal in metals_to_run:
+            if job.sp.metal == metal:
+                test_passed = True
+                break
+    return test_passed
 
 
 @FlowProject.label
-def pro_nvt_surften_done(job):
-    with(job):
-        
-        last_key_oneliner = list(names.PRO_SURFTEN_CHUNK_TO_STARTING_GRO_FILE.keys())[-1]
-        bool_job = look_in_file(job,[f"{names.PRO_SURFTEN_CHUNK_TO_STARTING_GRO_FILE[last_key_oneliner]}.log"],"Finished",check_for_not=True,check_for_not_str='Received the TERM')
-        return bool_job
-    
-    
-##################################################################################
+def eq_nvt_post(job):
+    with job:
+        test_passed = False
+        if job.isfile(f"{names.NAME_EQ_NVT}.log"):
+            with open(f"{names.NAME_EQ_NVT}.log", "r") as file_with_lines:
+                lines = file_with_lines.readlines()
+            for single_line in lines:
+                if "Received the " in single_line:
+                    if " signal, stopping within" in single_line:
+                        test_passed = False
+                        break
+                if "Finished mdrun on " in single_line:
+                    test_passed = True
+                    break
+    return test_passed
 
 
+@FlowProject.label
+def eq_npt_post_beren(job):
+    with job:
+        test_passed = False
+        if job.isfile(f"{names.NAME_EQ_NPT_BERENDSEN}.log"):
+            with open(f"{names.NAME_EQ_NPT_BERENDSEN}.log", "r") as file_with_lines:
+                lines = file_with_lines.readlines()
+            for single_line in lines:
+                if "Received the " in single_line:
+                    if " signal, stopping within" in single_line:
+                        test_passed = False
+                        break
+                if "Finished mdrun on " in single_line:
+                    test_passed = True
+                    break
+    return test_passed
+
+
+@FlowProject.label
+def eq_canon_post(job):
+    with job:
+        test_passed = False
+        if job.isfile(f"{names.NAME_EQ_CANON}.log"):
+            with open(f"{names.NAME_EQ_CANON}.log", "r") as file_with_lines:
+                lines = file_with_lines.readlines()
+            for single_line in lines:
+                if "Received the " in single_line:
+                    if " signal, stopping within" in single_line:
+                        test_passed = False
+                        break
+                if "Finished mdrun on " in single_line:
+                    test_passed = True
+                    break
+    return test_passed
+
+
+@FlowProject.label
+def pro_canon_post(job):
+    with job:
+        test_passed = False
+        if job.isfile(f"{names.NAME_PRO_CANON}.log"):
+            with open(f"{names.NAME_PRO_CANON}.log", "r") as file_with_lines:
+                lines = file_with_lines.readlines()
+            for single_line in lines:
+                if "Received the " in single_line:
+                    if " signal, stopping within" in single_line:
+                        test_passed = False
+                        break
+                if "Finished mdrun on " in single_line:
+                    test_passed = True
+                    break
+    return test_passed
+
+
+@FlowProject.label
+def free_energy_bar_copied(job):
+    with job:
+        test_passed = False
+        if job.isfile(f'{names.NAME_PRO_CANON}.xvg'):
+            current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
+            if job.isfile(f'{names.NAME_PRO_CANON}_{current_lambda}.xvg'):
+                test_passed = True
+    return test_passed
+
+
+@FlowProject.label
+def data_collected(job):
+    test_passed = False
+    local_name_of_file = f'{names.GENERAL_GLOBAL_DATA}.txt'
+    if os.path.exists(local_name_of_file):
+        with open(local_name_of_file, "r") as f:
+            contents = f.read()
+            if job.id in contents:
+                test_passed = True
+    return test_passed

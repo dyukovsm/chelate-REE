@@ -65,6 +65,7 @@ METAL_FORMAL_CHARGES = {
 
 # GROMACS MD steps and output controls
 SMALL_EQ_STEPS      = int(1000000)
+# MID_EQ_STEPS renamed to follow SIM core naming standard
 MID_EQ_STEPS        = int(2000000)
 LONG_EQ_STEPS       = int(4000000)
 SLOW_OUTPUT         = int(20000)
@@ -77,6 +78,10 @@ FAST_CALC             = int(100)
 
 # Cut-off radius in nm
 RCUT = 1.4
+
+# Data filenames and locations (moved to names.py to prevent circular imports)
+GENERAL_LOCAL_DATA = 'raw_general_data_for'
+GENERAL_GLOBAL_DATA = 'aggregate_general_Data'
 
 # Electrostatic and LJ lambda mapping lookup dict (Renamed from ljLam_eleLam_to_initLam)
 # First element of the tuple is electrostatic lambda, second is Lennard-Jones lambda
