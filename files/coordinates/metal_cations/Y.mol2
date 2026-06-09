@@ -1,0 +1,12 @@
+@<TRIPOS>MOLECULE
+Y
+1 0 1 0 1
+SMALL
+NO_CHARGES
+@<TRIPOS>CRYSIN
+    5.0000     5.0000     5.0000    90.0000    90.0000    90.0000  1  1
+@<TRIPOS>ATOM
+       1 Y         0.0000     0.0000     0.0000 Y           1 Y
+@<TRIPOS>BOND
+@<TRIPOS>SUBSTRUCTURE
+       1 Y              1 RESIDUE    0 **** ROOT      0

@@ -1,0 +1,58 @@
+; Run control
+integrator               = {{integrator}}
+;tinit                    = 0
+dt                       = {{dt}}
+comm-mode                = Linear
+nsteps                   = {{nsteps}}
+nstcomm                  = {{output_control}}
+; Output control
+nstxout                  = {{output_control}} ; I had 50000 for long sims, default is arround 1000
+nstvout                  = {{output_control}}
+nstcalcenergy            = {{nstcalcenergy}} ; this is the exact sampling that goes into edr file, need to be more precise here: 100 default
+nstfout                  = 0
+nstlog                   = {{output_control}}
+nstenergy                = {{output_control}}
+nstxout-compressed       = 0
+; Neighborsearching and short-range nonbonded interactions
+cutoff-scheme            = verlet
+nstlist                  = 10; nstlist = 10 is default; nstlist = 0 means no cutoff
+pbc                      = xyz
+rlist                    = {{rcoulomb}}
+; Electrostatics
+coulombtype              = {{coulombtype}}
+coulomb-modifier         = {{coulomb_modifier}}
+rcoulomb                 = {{rcoulomb}}
+rcoulomb-switch          = {{rcoulomb_switch}}
+; van der Waals
+vdwtype                  = {{vdwtype}}
+vdw-modifier             = {{vdw_modifier}}
+rvdw                     = {{rvdw}}
+rvdw-switch              = {{rvdw_switch}}
+DispCorr                 = {{DispCorr}};no
+fourierspacing           = 0.12
+pme-order                = 4
+ewald-rtol               = 1e-04
+ewald-rtol-lj		     = 1e-03
+lj-pme-comb-rule	     = lorentz-berthelot
+ewald-geometry           = 3d 
+epsilon-surface          = 0
+
+; Temperature coupling
+tcoupl                   = {{tcoupl}}
+tc-grps                  = system
+tau-t                    = 1.0
+ref-t                    = {{ref_t}};298.15
+
+
+pcoupl                   = {{pcoupl}}
+tau-p                    = 5.0
+pcoupltype               = isotropic
+ref-p                    = {{ref_p}};1.01325
+compressibility          = {{compressibility}} ; 4.5e-5 for liquid water default at 300K 1atm.
+
+constraints              = all-bonds
+constraint-algorithm     = lincs
+lincs-order              = 6
+;whatever
+;whatever
+;whatever;     for lincs debug: lincs_iter               = 4

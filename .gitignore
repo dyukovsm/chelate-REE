@@ -1,0 +1,21 @@
+# GROMACS large binary files (only in workspace directory)
+workspace/**/*.trr
+workspace/**/*.cpt
+workspace/**/*.xtc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

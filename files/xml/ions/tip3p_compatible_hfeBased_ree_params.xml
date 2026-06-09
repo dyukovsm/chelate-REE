@@ -1,0 +1,160 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ForceField name="SPCE" version="0.0.1">
+    <FFMetaData electrostatics14Scale="0" nonBonded14Scale="0.0" combiningRule="lorentz">
+    <Units energy="kJ/mol" mass="amu" charge="elementary_charge" distance="nm"/>
+  </FFMetaData>
+  <AtomTypes expression="4 * epsilon * ((sigma/r)**12 - (sigma/r)**6)">
+    <ParametersUnitDef parameter="epsilon" unit="kJ/mol"/>
+    <ParametersUnitDef parameter="sigma" unit="nm"/>
+    <AtomType name="Al_3plus" atomclass="Al_3plus" element="Al" charge="3.0" mass="26.980" definition="[Al;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00004631688"/>
+        <Parameter name="sigma" value="0.174794"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Fe_3plus" atomclass="Fe_3plus" element="Fe" charge="3.0" mass="55.843" definition="[Fe;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00056325008"/>
+        <Parameter name="sigma" value="0.192790"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Cr_3plus" atomclass="Cr_3plus" element="Cr" charge="3.0" mass="51.994" definition="[Cr;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00431822272"/>
+        <Parameter name="sigma" value="0.211678"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="In_3plus" atomclass="In_3plus" element="In" charge="3.0" mass="114.816" definition="[In;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00536669128"/>
+        <Parameter name="sigma" value="0.214172"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Tl_3plus" atomclass="Tl_3plus" element="Tl" charge="3.0" mass="204.381" definition="[Tl;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00572994616"/>
+        <Parameter name="sigma" value="0.214885"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Y_3plus" atomclass="Y_3plus" element="Y" charge="3.0" mass="88.904" definition="[Y;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.11545547168"/>
+        <Parameter name="sigma" value="0.259073"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="La_3plus" atomclass="La_3plus" element="La" charge="3.0" mass="138.904" definition="[La;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.39555874904"/>
+        <Parameter name="sigma" value="0.290077"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Ce_3plus" atomclass="Ce_3plus" element="Ce" charge="3.0" mass="140.114" definition="[Ce;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.32577870832"/>
+        <Parameter name="sigma" value="0.284197"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Pr_3plus" atomclass="Pr_3plus" element="Pr" charge="3.0" mass="140.906" definition="[Pr;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.27501557520"/>
+        <Parameter name="sigma" value="0.279386"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Nd_3plus" atomclass="Nd_3plus" element="Nd" charge="3.0" mass="144.240" definition="[Nd;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.23958713680"/>
+        <Parameter name="sigma" value="0.275822"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Sm_3plus" atomclass="Sm_3plus" element="Sm" charge="3.0" mass="150.358" definition="[Sm;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.19966935008"/>
+        <Parameter name="sigma" value="0.271190"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Eu_3plus" atomclass="Eu_3plus" element="Eu" charge="3.0" mass="151.962" definition="[Eu;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.17250406064"/>
+        <Parameter name="sigma" value="0.267804"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Gd_3plus" atomclass="Gd_3plus" element="Gd" charge="3.0" mass="157.248" definition="[Gd;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.16186477624"/>
+        <Parameter name="sigma" value="0.266379"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Tb_3plus" atomclass="Tb_3plus" element="Tb" charge="3.0" mass="158.923" definition="[Tb;X0]" doi="10.1021/jp505875v"> 
+      <Parameters> 
+        <Parameter name="epsilon" value="0.14435620064"/>
+        <Parameter name="sigma" value="0.263884"/> 
+      </Parameters> 
+    </AtomType> 
+    <AtomType name="Dy_3plus" atomclass="Dy_3plus" element="Dy" charge="3.0" mass="162.498" definition="[Dy;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.12933141480"/>
+        <Parameter name="sigma" value="0.261568"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Er_3plus" atomclass="Er_3plus" element="Er" charge="3.0" mass="167.257" definition="[Er;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.09359126840"/>
+        <Parameter name="sigma" value="0.254975"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Tm_3plus" atomclass="Tm_3plus" element="Tm" charge="3.0" mass="168.932" definition="[Tm;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.08510343864"/>
+        <Parameter name="sigma" value="0.253193"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Lu_3plus" atomclass="Lu_3plus" element="Lu" charge="3.0" mass="174.965" definition="[Lu;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.08510343864"/>
+        <Parameter name="sigma" value="0.253193"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Hf_4plus" atomclass="Hf_4plus" element="Hf" charge="4.0" mass="178.488" definition="[Hf;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00065626040"/>
+        <Parameter name="sigma" value="0.193681"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Zr_4plus" atomclass="Zr_4plus" element="Zr" charge="4.0" mass="91.222" definition="[Zr;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00185158736"/>
+        <Parameter name="sigma" value="0.202947"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Ce_4plus" atomclass="Ce_4plus" element="Ce" charge="4.0" mass="140.114" definition="[Ce;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.04268671608"/>
+        <Parameter name="sigma" value="0.241077"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="U_4plus" atomclass="U_4plus" element="U" charge="4.0" mass="238.027" definition="[U;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.00621311448"/>
+        <Parameter name="sigma" value="0.215419"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Pu_4plus" atomclass="Pu_4plus" element="Pu" charge="4.0" mass="243.998" definition="[Pu;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.01588685720"/>
+        <Parameter name="sigma" value="0.226823"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Th_4plus" atomclass="Th_4plus" element="Th" charge="4.0" mass="232.036" definition="[Th;X0]" doi="10.1021/jp505875v">
+      <Parameters>
+        <Parameter name="epsilon" value="0.12494139464"/>
+        <Parameter name="sigma" value="0.260677"/>
+      </Parameters>
+    </AtomType>
+    <AtomType name="Cl_opls" atomclass="Cl_opls" element="Cl" charge="-1.0" mass="35.453" definition="[Cl;X0]" doi="https://doi.org/10.1021/ja00316a012">
+      <Parameters>
+        <Parameter name="epsilon" value="0.492833"/>
+        <Parameter name="sigma" value="0.441724"/>
+      </Parameters>
+    </AtomType>
+  </AtomTypes>
+</ForceField>

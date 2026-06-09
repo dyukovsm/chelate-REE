@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
+    <vdW version="0.4" potential="Lennard-Jones-12-6" combining_rules="Lorentz-Berthelot" scale12="0.0" scale13="0.0" scale14="0.5" scale15="1.0" cutoff="9.0 * angstrom ** 1" switch_width="1.0 * angstrom ** 1" periodic_method="cutoff" nonperiodic_method="no-cutoff">
+        <Atom smirks="[#13X0+3:1]" epsilon="0.00004631688 * kilojoule_per_mole ** 1" sigma="0.174794 * nanometer ** 1" id="n-Al_3plus"></Atom>
+        <Atom smirks="[#26X0+3:1]" epsilon="0.00056325008 * kilojoule_per_mole ** 1" sigma="0.192790 * nanometer ** 1" id="n-Fe_3plus"></Atom>
+        <Atom smirks="[#24X0+3:1]" epsilon="0.00431822272 * kilojoule_per_mole ** 1" sigma="0.211678 * nanometer ** 1" id="n-Cr_3plus"></Atom>
+        <Atom smirks="[#49X0+3:1]" epsilon="0.00536669128 * kilojoule_per_mole ** 1" sigma="0.214172 * nanometer ** 1" id="n-In_3plus"></Atom>
+        <Atom smirks="[#81X0+3:1]" epsilon="0.00572994616 * kilojoule_per_mole ** 1" sigma="0.214885 * nanometer ** 1" id="n-Tl_3plus"></Atom>
+        <Atom smirks="[#39X0+3:1]" epsilon="0.11545547168 * kilojoule_per_mole ** 1" sigma="0.259073 * nanometer ** 1" id="n-Y_3plus"></Atom>
+        <Atom smirks="[#57X0+3:1]" epsilon="0.39555874904 * kilojoule_per_mole ** 1" sigma="0.290077 * nanometer ** 1" id="n-La_3plus"></Atom>
+        <Atom smirks="[#58X0+3:1]" epsilon="0.32577870832 * kilojoule_per_mole ** 1" sigma="0.284197 * nanometer ** 1" id="n-Ce_3plus"></Atom>
+        <Atom smirks="[#59X0+3:1]" epsilon="0.27501557520 * kilojoule_per_mole ** 1" sigma="0.279386 * nanometer ** 1" id="n-Pr_3plus"></Atom>
+        <Atom smirks="[#60X0+3:1]" epsilon="0.23958713680 * kilojoule_per_mole ** 1" sigma="0.275822 * nanometer ** 1" id="n-Nd_3plus"></Atom>
+        <Atom smirks="[#62X0+3:1]" epsilon="0.19966935008 * kilojoule_per_mole ** 1" sigma="0.271190 * nanometer ** 1" id="n-Sm_3plus"></Atom>
+        <Atom smirks="[#63X0+3:1]" epsilon="0.17250406064 * kilojoule_per_mole ** 1" sigma="0.267804 * nanometer ** 1" id="n-Eu_3plus"></Atom>
+        <Atom smirks="[#64X0+3:1]" epsilon="0.16186477624 * kilojoule_per_mole ** 1" sigma="0.266379 * nanometer ** 1" id="n-Gd_3plus"></Atom>
+        <Atom smirks="[#65X0+3:1]" epsilon="0.14435620064 * kilojoule_per_mole ** 1" sigma="0.263884 * nanometer ** 1" id="n-Tb_3plus"></Atom>
+        <Atom smirks="[#66X0+3:1]" epsilon="0.12933141480 * kilojoule_per_mole ** 1" sigma="0.261568 * nanometer ** 1" id="n-Dy_3plus"></Atom>
+        <Atom smirks="[#68X0+3:1]" epsilon="0.09359126840 * kilojoule_per_mole ** 1" sigma="0.254975 * nanometer ** 1" id="n-Er_3plus"></Atom>
+        <Atom smirks="[#69X0+3:1]" epsilon="0.08510343864 * kilojoule_per_mole ** 1" sigma="0.253193 * nanometer ** 1" id="n-Tm_3plus"></Atom>
+        <Atom smirks="[#71X0+3:1]" epsilon="0.08510343864 * kilojoule_per_mole ** 1" sigma="0.253193 * nanometer ** 1" id="n-Lu_3plus"></Atom>
+        <Atom smirks="[#72X0+4:1]" epsilon="0.00065626040 * kilojoule_per_mole ** 1" sigma="0.193681 * nanometer ** 1" id="n-Hf_4plus"></Atom>
+        <Atom smirks="[#40X0+4:1]" epsilon="0.00185158736 * kilojoule_per_mole ** 1" sigma="0.202947 * nanometer ** 1" id="n-Zr_4plus"></Atom>
+        <Atom smirks="[#58X0+4:1]" epsilon="0.04268671608 * kilojoule_per_mole ** 1" sigma="0.241077 * nanometer ** 1" id="n-Ce_4plus"></Atom>
+        <Atom smirks="[#92X0+4:1]" epsilon="0.00621311448 * kilojoule_per_mole ** 1" sigma="0.215419 * nanometer ** 1" id="n-U_4plus"></Atom>
+        <Atom smirks="[#94X0+4:1]" epsilon="0.01588685720 * kilojoule_per_mole ** 1" sigma="0.226823 * nanometer ** 1" id="n-Pu_4plus"></Atom>
+        <Atom smirks="[#90X0+4:1]" epsilon="0.12494139464 * kilojoule_per_mole ** 1" sigma="0.260677 * nanometer ** 1" id="n-Th_4plus"></Atom>
+        <!-- opls_401 -->
+        <Atom smirks="[#17X0-1:1]" epsilon="4.92833e-01 * kilojoule_per_mole ** 1" sigma="4.41724e-01 * nanometer ** 1" id="n-Cl_opls"></Atom>
+        <!-- opls_406 -->
+        <Atom smirks="[#3X0+1:1]" epsilon="7.64793e-02 * kilojoule_per_mole ** 1" sigma="2.12645e-01 * nanometer ** 1" id="n-Li_opls"></Atom>
+    </vdW>
+    <LibraryCharges version="0.3">
+        <LibraryCharge smirks="[#13X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Al_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#26X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Fe_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#24X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Cr_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#49X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-In_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#81X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Tl_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#39X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Y_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#57X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-La_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#58X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Ce_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#59X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Pr_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#60X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Nd_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#62X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Sm_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#63X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Eu_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#64X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Gd_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#65X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Tb_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#66X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Dy_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#68X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Er_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#69X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Tm_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#71X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Lu_3plus"></LibraryCharge>
+        <LibraryCharge smirks="[#72X0+4:1]" charge1="4 * elementary_charge ** 1" id="q-Hf_4plus"></LibraryCharge>
+        <LibraryCharge smirks="[#40X0+4:1]" charge1="4 * elementary_charge ** 1" id="q-Zr_4plus"></LibraryCharge>
+        <LibraryCharge smirks="[#58X0+4:1]" charge1="4 * elementary_charge ** 1" id="q-Ce_4plus"></LibraryCharge>
+        <LibraryCharge smirks="[#92X0+4:1]" charge1="4 * elementary_charge ** 1" id="q-U_4plus"></LibraryCharge>
+        <LibraryCharge smirks="[#94X0+4:1]" charge1="4 * elementary_charge ** 1" id="q-Pu_4plus"></LibraryCharge>
+        <LibraryCharge smirks="[#90X0+4:1]" charge1="4 * elementary_charge ** 1" id="q-Th_4plus"></LibraryCharge>
+        <!-- opls_401 -->
+        <LibraryCharge smirks="[#17X0-1:1]" charge1="-1 * elementary_charge ** 1" id="q-Cl_opls"></LibraryCharge>
+        <!-- opls_406 -->
+        <LibraryCharge smirks="[#3X0+1:1]" charge1="1 * elementary_charge ** 1" id="q-Li_opls"></LibraryCharge>
+    </LibraryCharges>
+</SMIRNOFF>
