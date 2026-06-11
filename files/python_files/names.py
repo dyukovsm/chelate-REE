@@ -63,30 +63,31 @@ METAL_FORMAL_CHARGES = {
     'Hf': 4, 'Zr': 4, 'U': 4, 'Pu': 4, 'Th': 4,
 }
 
-#### # GROMACS MD steps and output controls
-#### SMALL_EQ_STEPS      = int(1000000)
-#### # MID_EQ_STEPS renamed to follow SIM core naming standard
-#### MID_EQ_STEPS        = int(2000000)
-#### LONG_EQ_STEPS       = int(4000000)
-#### SLOW_OUTPUT         = int(20000)
-#### NORMAL_CALC         = int(100)
-#### 
-#### PRO_STEPS             = int(500000)
-#### PRO_FREE_ENERGY_STEPS = int(500000)
-#### FAST_OUTPUT           = int(1000)
-#### FAST_CALC             = int(100)
 # GROMACS MD steps and output controls
-SMALL_EQ_STEPS      = int(10000)
+SMALL_EQ_STEPS      = int(1000000)
 # MID_EQ_STEPS renamed to follow SIM core naming standard
-MID_EQ_STEPS        = int(10000)
-LONG_EQ_STEPS       = int(10000)
-SLOW_OUTPUT         = int(1000)
+MID_EQ_STEPS        = int(2000000)
+LONG_EQ_STEPS       = int(10000000)
+SLOW_OUTPUT         = int(20000)
 NORMAL_CALC         = int(100)
 
-PRO_STEPS             = int(10000)
-PRO_FREE_ENERGY_STEPS = int(10000)
+PRO_STEPS             = int(500000)
+PRO_FREE_ENERGY_STEPS = int(500000)
 FAST_OUTPUT           = int(1000)
 FAST_CALC             = int(100)
+
+## # GROMACS MD steps and output controls
+## SMALL_EQ_STEPS      = int(10000)
+## # MID_EQ_STEPS renamed to follow SIM core naming standard
+## MID_EQ_STEPS        = int(10000)
+## LONG_EQ_STEPS       = int(10000)
+## SLOW_OUTPUT         = int(1000)
+## NORMAL_CALC         = int(100)
+## 
+## PRO_STEPS             = int(10000)
+## PRO_FREE_ENERGY_STEPS = int(10000)
+## FAST_OUTPUT           = int(1000)
+## FAST_CALC             = int(100)
 
 # Cut-off radius in nm
 RCUT = 1.4
@@ -99,22 +100,22 @@ GENERAL_GLOBAL_DATA = 'aggregate_general_Data'
 # First element of the tuple is electrostatic lambda, second is Lennard-Jones lambda
 eleLam_ljLam_to_initLam = {
 (0.0,    0.0): 0,
-(0.075,  0.0): 1,
-(0.150,  0.0): 2,
-(0.225,  0.0): 3,
-(0.3,    0.0): 4,
-(0.4,    0.0): 5,
-(0.5,    0.0): 6,
-(0.6,    0.0): 7,
-(0.7,    0.0): 8,
-(0.8,    0.0): 9,
-(0.9,    0.0): 10,
-(1.0,    0.0): 11,
-(1.0,    0.1): 12,
-(1.0,    0.25): 13,    
-(1.0,    0.4):  14,
-(1.0,    0.55): 15,    
-(1.0,    0.7):  16,
-(1.0,    0.85): 17,    
-(1.0,    1.0):  18
+# (0.075,  0.0): 1,
+# (0.150,  0.0): 2,
+# (0.225,  0.0): 3,
+# (0.3,    0.0): 4,
+# (0.4,    0.0): 5,
+# (0.5,    0.0): 6,
+# (0.6,    0.0): 7,
+# (0.7,    0.0): 8,
+# (0.8,    0.0): 9,
+# (0.9,    0.0): 10,
+# (1.0,    0.0): 11,
+# (1.0,    0.1): 12,
+# (1.0,    0.25): 13,    
+# (1.0,    0.4):  14,
+# (1.0,    0.55): 15,    
+# (1.0,    0.7):  16,
+# (1.0,    0.85): 17,    
+# (1.0,    1.0):  18
     }

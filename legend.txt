@@ -1,0 +1,2 @@
+job 	 sp 
+ e7c0409463b96d94d80ca90df746039b 		 {'metal': 'Nd', 'replicate': 0, 'lambda_LJ': 0.0, 'lambda_ELE': 0.0}

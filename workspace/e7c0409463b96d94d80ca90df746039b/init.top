@@ -1,0 +1,107 @@
+[ defaults ]
+; nbfunc	comb-rule	gen-pairs	fudgeLJ	fudgeQQ
+     1	     2	yes   	0.500000	0.833333
+
+[ atomtypes ]
+;type, bondingtype, atomic_number, mass, charge, ptype, sigma, epsilon
+TIP3P_0    	     8	15.99943	0.0000000000000000	A    	0.31507	0.6363864000000001
+TIP3P_1    	     1	1.007947	0.0000000000000000	A    	1	0
+TIP3P_2    	     1	1.007947	0.0000000000000000	A    	1	0
+Nd_0       	    60	144.2423	0.0000000000000000	A    	0.275822	0.2395871368
+Cl_0       	    17	35.4532	0.0000000000000000	A    	0.441724	0.492833
+
+[ moleculetype ]
+TIP3P	         3
+
+[ atoms ]
+;index, atom type, resnum, resname, name, cgnr, charge, mass
+     1 TIP3P_0       1 TIP3P    O          1     -0.834000000000     15.999430000000
+     2 TIP3P_1       1 TIP3P    H          1      0.417000000000      1.007947000000
+     3 TIP3P_2       1 TIP3P    H          1      0.417000000000      1.007947000000
+
+[ pairs ]
+;ai    aj   funct
+
+[ bonds ]
+;ai    aj   funct r k
+
+[ angles ]
+;ai    aj   ak   funct theta  k
+
+[ dihedrals ]
+;ai    aj   ak   al   funct phi  k
+
+[ settles ]
+;i  funct   dOH  dHH
+     1	     1	      0.095720000000	      0.151390065452
+
+
+[ exclusions ]
+;ai    aj
+     1     2     3
+     2     1     3
+     3     1     2
+
+[ moleculetype ]
+Nd	         3
+
+[ atoms ]
+;index, atom type, resnum, resname, name, cgnr, charge, mass
+     1 Nd_0      1001 Nd       Nd         1      3.000000000000    144.242300000000
+
+[ pairs ]
+;ai    aj   funct
+
+[ bonds ]
+;ai    aj   funct r k
+
+[ angles ]
+;ai    aj   ak   funct theta  k
+
+[ dihedrals ]
+;ai    aj   ak   al   funct phi  k
+
+[ settles ]
+;i  funct   dOH  dHH
+
+
+[ exclusions ]
+;ai    aj
+
+[ moleculetype ]
+Cl	         3
+
+[ atoms ]
+;index, atom type, resnum, resname, name, cgnr, charge, mass
+     1 Cl_0      1002 Cl       Cl         1     -1.000000000000     35.453200000000
+
+[ pairs ]
+;ai    aj   funct
+
+[ bonds ]
+;ai    aj   funct r k
+
+[ angles ]
+;ai    aj   ak   funct theta  k
+
+[ dihedrals ]
+;ai    aj   ak   al   funct phi  k
+
+[ settles ]
+;i  funct   dOH  dHH
+
+
+[ exclusions ]
+;ai    aj
+
+
+[ system ]
+;name
+FOO
+
+[ molecules ]
+;name	number
+TIP3P	1000
+Nd	1
+Cl	3
+

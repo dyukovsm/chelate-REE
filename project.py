@@ -46,7 +46,7 @@ from files.python_files.job_tester import (
 
 # Cores configuration
 BUILD_CORES = 1
-SIM_CORES = 6
+SIM_CORES = 7
 ANA_CORES = 1
 
 # Walltimes configuration
@@ -275,37 +275,37 @@ def build_input(job):
     )
 
 
-# @FlowProject.pre(init_written)
-# @FlowProject.pre(mdp_written)
-# @FlowProject.post(eq_nvt_post)
-# @FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": MID_HOURS}, with_job=True, cmd=True)
-# def EQ_NVT(job):
-#     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NVT}.mdp -c init.gro -p init.top -o {names.NAME_EQ_NVT}.tpr -maxwarn 99')
-#     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NVT}')
-#     run_command = str(f'{build_mdp}; sleep 2; {run_gmx}')
-#     return run_command
-# 
-# 
-# @FlowProject.pre(init_written)
-# @FlowProject.pre(mdp_written)
-# @FlowProject.pre(eq_nvt_post)
-# @FlowProject.post(eq_npt_post_beren)
-# @FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
-# def EQ_NPT_BERENDSEN(job):
-#     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NPT_BERENDSEN}.mdp -c {names.NAME_EQ_NVT}.gro -p init.top -o {names.NAME_EQ_NPT_BERENDSEN}.tpr -maxwarn 99')
-#     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NPT_BERENDSEN}')
-#     run_command = str(f'{build_mdp}; sleep 2; {run_gmx}')
-#     return run_command
+@FlowProject.pre(init_written)
+@FlowProject.pre(mdp_written)
+@FlowProject.post(eq_nvt_post)
+@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": MID_HOURS}, with_job=True, cmd=True)
+def EQ_NVT(job):
+    build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NVT}.mdp -c init.gro -p init.top -o {names.NAME_EQ_NVT}.tpr -maxwarn 99')
+    run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NVT}')
+    run_command = str(f'{build_mdp}; sleep 2; {run_gmx}')
+    return run_command
 
 
 @FlowProject.pre(init_written)
 @FlowProject.pre(mdp_written)
-@FlowProject.pre(pre_equilibrated)
+@FlowProject.pre(eq_nvt_post)
+@FlowProject.post(eq_npt_post_beren)
+@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
+def EQ_NPT_BERENDSEN(job):
+    build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NPT_BERENDSEN}.mdp -c {names.NAME_EQ_NVT}.gro -p init.top -o {names.NAME_EQ_NPT_BERENDSEN}.tpr -maxwarn 99')
+    run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NPT_BERENDSEN}')
+    run_command = str(f'{build_mdp}; sleep 2; {run_gmx}')
+    return run_command
+
+
+@FlowProject.pre(init_written)
+@FlowProject.pre(mdp_written)
+#@FlowProject.pre(pre_equilibrated)
 @FlowProject.post(eq_canon_post)
 @FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def EQ_CANON(job):
-    #build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_CANON}.mdp -c {names.NAME_EQ_NPT_BERENDSEN}.gro -p init.top -o {names.NAME_EQ_CANON}.tpr -maxwarn 99')
-    build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_CANON}.mdp -c {names.NAME_PRE_EQ_NPT_BERENDSEN}.gro -p init.top -o {names.NAME_EQ_CANON}.tpr -maxwarn 99')
+    build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_CANON}.mdp -c {names.NAME_EQ_NPT_BERENDSEN}.gro -p init.top -o {names.NAME_EQ_CANON}.tpr -maxwarn 99')
+    #build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_CANON}.mdp -c {names.NAME_PRE_EQ_NPT_BERENDSEN}.gro -p init.top -o {names.NAME_EQ_CANON}.tpr -maxwarn 99')
     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_CANON}')
     run_command = str(f'{build_mdp}; sleep 2; {run_gmx}')
     return run_command
