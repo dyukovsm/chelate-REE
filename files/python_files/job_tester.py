@@ -1,17 +1,17 @@
 import math
-import mbuild as mb
-from foyer import Forcefield
-import foyer
+#import mbuild as mb
+#from foyer import Forcefield
+#import foyer
 import pandas as pd
 import numpy as np
 import random
 import time
-from parmed import residue
+#from parmed import residue
 import rdkit
 from rdkit import Chem
 from rdkit.Chem import AllChem
-import parmed
-from parmed import gromacs
+#import parmed
+#from parmed import gromacs
 import signac
 from flow import FlowProject, aggregator
 from flow.environment import DefaultSlurmEnvironment
@@ -161,12 +161,20 @@ def pre_equilibrated(job):
     return test_passed
 
 
-def templatedOrEquilibrated(job):
+def templatedOrEquilibrated_eqNVT(job):
+    """Check if job uses pre-equilibrated template OR has completed NPT equilibration."""
+    if job.sp.unNested_usesTemplates:
+        return pre_equilibrated(job)
+    else:
+        return gmx_log_finished(job, f"{names.NAME_EQ_NVT}.log")
+
+def templatedOrEquilibrated_eqNPT(job):
     """Check if job uses pre-equilibrated template OR has completed NPT equilibration."""
     if job.sp.unNested_usesTemplates:
         return pre_equilibrated(job)
     else:
         return gmx_log_finished(job, f"{names.NAME_EQ_NPT_BERENDSEN}.log")
+
 
 
 @FlowProject.label

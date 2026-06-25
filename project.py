@@ -36,7 +36,8 @@ from files.python_files.job_tester import (
     eq_nvt_post,
     eq_npt_post_beren,
     runWithTemplateAbsent,
-    templatedOrEquilibrated,
+    templatedOrEquilibrated_eqNVT,
+    templatedOrEquilibrated_eqNPT,
     eq_canon_post,
     pro_canon_post,
     free_energy_bar_copied,
@@ -316,7 +317,7 @@ def build_input(job):
 @FlowProject.pre(runWithTemplateAbsent)
 @FlowProject.pre(init_written)
 @FlowProject.pre(mdp_written)
-@FlowProject.post(eq_nvt_post)
+@FlowProject.post(templatedOrEquilibrated_eqNVT)
 @FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": MID_HOURS}, with_job=True, cmd=True)
 def EQ_NVT(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NVT}.mdp -c init.gro -p init.top -o {names.NAME_EQ_NVT}.tpr -maxwarn 99')
@@ -328,7 +329,7 @@ def EQ_NVT(job):
 @FlowProject.pre(init_written)
 @FlowProject.pre(mdp_written)
 @FlowProject.pre(eq_nvt_post)
-@FlowProject.post(eq_npt_post_beren)
+@FlowProject.post(templatedOrEquilibrated_eqNPT)
 @FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def EQ_NPT_BERENDSEN(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NPT_BERENDSEN}.mdp -c {names.NAME_EQ_NVT}.gro -p init.top -o {names.NAME_EQ_NPT_BERENDSEN}.tpr -maxwarn 99')
@@ -339,7 +340,7 @@ def EQ_NPT_BERENDSEN(job):
 
 @FlowProject.pre(init_written)
 @FlowProject.pre(mdp_written)
-@FlowProject.pre(templatedOrEquilibrated)
+@FlowProject.pre(templatedOrEquilibrated_eqNPT)
 @FlowProject.post(eq_canon_post)
 @FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def EQ_CANON(job):
