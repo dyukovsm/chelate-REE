@@ -47,7 +47,7 @@ from files.python_files.job_tester import (
 
 # Cores configuration
 BUILD_CORES = 1
-SIM_CORES = 8
+SIM_CORES = 4
 ANA_CORES = 1
 
 # Walltimes configuration
@@ -63,7 +63,8 @@ project = signac.get_project()
 
 
 class Custom_environment(DefaultSlurmEnvironment):
-    template = "v3_2025_gpu_potoff.sh"
+    hostname_pattern = r".*\.grid\.wayne\.edu"
+    template = "gmx_grid_fall2025.sh"
 
 
 @FlowProject.post(init_written)
