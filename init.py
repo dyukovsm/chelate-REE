@@ -14,7 +14,7 @@ lambda_LJ  = sorted({lj for ele, lj in local_eleLam_ljLam_to_initLam})
 metal = ['La', 'Nd', 'Eu', 'Dy', 'Lu']
 polypeptide = ['DUM3+']#['LBT5-','LBT3-','DUM3+']
 replicate = [0] # , 1, 2]
-unNested_usesTemplates = False
+unNested_usesTemplates = True
 
 
 total_statepoints = list()
