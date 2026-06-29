@@ -4,3 +4,6 @@
 **/__pycache__
 **/aggregate_general_Data.txt
 **/signac_project_document.json
+000000_analysis/
+aggregated_free_energy.txt
+slurm-*.out
