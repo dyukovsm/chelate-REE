@@ -121,13 +121,19 @@ def build_input(job):
             polypeptide_charge = 0
 
         net_ion_charge = metal_ion_charge + polypeptide_charge; net_ion_charge=int(net_ion_charge)
+        print(f"Metal: {job.sp.metal}, Polypeptide: {job.sp.polypeptide}, Net Ion Charge: {net_ion_charge}")
         if net_ion_charge > 0:
             counterion_str = 'Cl'
         elif net_ion_charge < 0:
             counterion_str = 'Li'
         counterion_count = abs(net_ion_charge)
 
-        box_length = 3.5
+        init_box_length = 3.5  # nm
+        init_n_water_molecules = 1000
+        box_length_multiplier = 1.83
+        box_length = init_box_length * box_length_multiplier
+        n_water_molecules = int(init_n_water_molecules * (box_length_multiplier ** 3))
+        
 
         # Load small molecules via RDKit
         water_rd = Chem.MolFromMol2File(
@@ -172,29 +178,70 @@ def build_input(job):
                             )
                             break
 
-            # Create TB ion molecule with position from original PDB
-            tb_mol = Molecule.from_smiles('[Tb+3]')
-            tb_mol.atoms[0].formal_charge = 3 * unit.elementary_charge
+            # Create the ACTUAL target metal ion (not Tb) at the TB template position
+            # This avoids having two metal ions (template Tb + target metal)
+            metal_smiles = f'[{job.sp.metal}+{metal_ion_charge}]'
+            target_metal_mol = Molecule.from_smiles(metal_smiles)
+            target_metal_mol.atoms[0].formal_charge = metal_ion_charge * unit.elementary_charge
             if tb_coords is not None:
-                tb_mol.add_conformer(np.array([tb_coords]) * unit.angstrom)
+                target_metal_mol.add_conformer(np.array([tb_coords]) * unit.angstrom)
 
             # Load pre-cleaned polypeptide topology (cleaned by unscrew_polypeptide.py)
             cleaned_pdb_path = f'{names.PROJECT_DIR}/files/coordinates/polypeptide/{job.sp.polypeptide}{names.CLEANED_PDB_SUFFIX}.pdb'
             polypeptide_topology = Topology.from_pdb(cleaned_pdb_path)
 
-            # Add TB ion to the topology
-            tb_topology = Topology.from_molecules([tb_mol])
-            for mol in tb_topology.molecules:
+            # Add target metal ion to the topology
+            metal_topology = Topology.from_molecules([target_metal_mol])
+            for mol in metal_topology.molecules:
                 polypeptide_topology.add_molecule(mol)
+
+            # Center the solute in the box to avoid coordinates outside box bounds
+            # The original PDB coordinates are in crystallographic frame, need to translate
+            box_center = np.array([box_length / 2, box_length / 2, box_length / 2])  # nm
+
+            # Collect all atom positions to find centroid
+            all_positions = []
+            for mol in polypeptide_topology.molecules:
+                if mol.n_conformers > 0:
+                    # Convert to nm for consistency
+                    positions_nm = mol.conformers[0].to(unit.nanometer).magnitude
+                    all_positions.extend(positions_nm)
+
+            if all_positions:
+                all_positions = np.array(all_positions)
+                centroid = np.mean(all_positions, axis=0)
+                translation = box_center - centroid
+
+                # Apply translation to all molecules in the topology
+                for mol in polypeptide_topology.molecules:
+                    if mol.n_conformers > 0:
+                        old_conf = mol.conformers[0].to(unit.nanometer).magnitude
+                        new_conf = old_conf + translation
+                        # Clear and set new conformer
+                        mol._conformers = []
+                        mol.add_conformer(new_conf * unit.nanometer)
 
             solute_topology = polypeptide_topology
 
-        if counterion_count != 0:
-            molecules_dummy = [water_mol, cation_mol, li_mol]
-            number_of_copies_dummy = [1000, 1, counterion_count]
+        # Build molecule list for pack_box
+        # For polypeptide cases: metal is already in solute_topology, don't add separately
+        # For DUM3+ case: metal must be added to molecules_dummy
+        if solute_topology is not None:
+            # Polypeptide case: metal already in solute, only add water + counterions
+            if counterion_count != 0:
+                molecules_dummy = [water_mol, li_mol]
+                number_of_copies_dummy = [n_water_molecules, counterion_count]
+            else:
+                molecules_dummy = [water_mol]
+                number_of_copies_dummy = [n_water_molecules]
         else:
-            molecules_dummy = [water_mol, cation_mol]
-            number_of_copies_dummy = [1000, 1]
+            # DUM3+ case: need to add cation_mol since there's no solute with metal
+            if counterion_count != 0:
+                molecules_dummy = [water_mol, cation_mol, li_mol]
+                number_of_copies_dummy = [n_water_molecules, 1, counterion_count]
+            else:
+                molecules_dummy = [water_mol, cation_mol]
+                number_of_copies_dummy = [n_water_molecules, 1]
 
         # Pack the box using OpenFF's pack_box
         topology = pack_box(
@@ -215,12 +262,6 @@ def build_input(job):
 
         if os.path.exists('init_pointenergy.mdp'):
             os.remove('init_pointenergy.mdp')
-
-        # pre-equilibration templating from EQ_NPT_BERENDSEN.gro
-        shutil.copy(
-            f"{names.PROJECT_DIR}/files/coordinates/equilibrated_frames/{names.NAME_EQ_NPT_BERENDSEN}.gro",
-            f"{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro"
-        )
 
         if job.sp.unNested_usesTemplates:
             try:
