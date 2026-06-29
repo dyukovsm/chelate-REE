@@ -56,6 +56,7 @@ MDP_FILE_LIST = [f'{NAME_EQ_NVT}.mdp', f'{NAME_EQ_NPT_BERENDSEN}.mdp', f'{NAME_E
 
 # Metal cation charge specs
 METAL_FORMAL_CHARGES = {
+    'Ca': 2,
     'Al': 3, 'Fe': 3, 'Cr': 3, 'In': 3, 'Tl': 3,
     'Y': 3, 'La': 3, 'Ce': 3, 'Pr': 3, 'Nd': 3,
     'Sm': 3, 'Eu': 3, 'Gd': 3, 'Tb': 3, 'Dy': 3,
