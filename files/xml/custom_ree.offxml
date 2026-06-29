@@ -29,6 +29,7 @@
         <Atom smirks="[#17X0-1:1]" epsilon="4.92833e-01 * kilojoule_per_mole ** 1" sigma="4.41724e-01 * nanometer ** 1" id="n-Cl_opls"></Atom>
         <!-- opls_406 -->
         <Atom smirks="[#3X0+1:1]" epsilon="7.64793e-02 * kilojoule_per_mole ** 1" sigma="2.12645e-01 * nanometer ** 1" id="n-Li_opls"></Atom>
+        <Atom smirks="[#20X0+2:1]" epsilon="0.2026866 * kilojoule_per_mole ** 1" sigma="0.272258648 * nanometer ** 1" id="n-Ca_2plus"></Atom>
     </vdW>
     <LibraryCharges version="0.3">
         <LibraryCharge smirks="[#13X0+3:1]" charge1="3 * elementary_charge ** 1" id="q-Al_3plus"></LibraryCharge>
@@ -59,5 +60,6 @@
         <LibraryCharge smirks="[#17X0-1:1]" charge1="-1 * elementary_charge ** 1" id="q-Cl_opls"></LibraryCharge>
         <!-- opls_406 -->
         <LibraryCharge smirks="[#3X0+1:1]" charge1="1 * elementary_charge ** 1" id="q-Li_opls"></LibraryCharge>
+        <LibraryCharge smirks="[#20X0+2:1]" charge1="2 * elementary_charge ** 1" id="q-Ca_2plus"></LibraryCharge>
     </LibraryCharges>
 </SMIRNOFF>

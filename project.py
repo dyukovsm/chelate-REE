@@ -10,6 +10,25 @@ Contributors:
   - Claude Opus 4.5 (Anthropic) (Co-Author)
 """
 
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
+from files.python_files import job_tester
 import math
 # pyrefly: ignore [missing-import]
 import numpy as np
@@ -86,7 +105,14 @@ def build_input(job):
         conda_bin = os.path.dirname(sys.executable)
         os.environ['PATH'] = f'{conda_bin}:{os.environ.get("PATH", "")}'
         
-        metal_ion_charge = 4 if job.sp.metal in ('U', 'Hf') else 3
+        
+        if job.sp.metal in ('U', 'Hf'):
+            metal_ion_charge = 4
+        elif job.sp.metal in ('Ca', 'Mg', 'Zn', 'Cu', 'Ni'):
+            metal_ion_charge = 2
+        else:
+            metal_ion_charge = 3
+
         if job.sp.polypeptide == 'LBT3-':
             polypeptide_charge = -3
         elif job.sp.polypeptide == 'LBT5-':
