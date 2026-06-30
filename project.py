@@ -49,9 +49,9 @@ from files.python_files.job_tester import (
 )
 
 # Cores configuration
-BUILD_CORES = 1
-SIM_CORES = 4
-ANA_CORES = 1
+BUILD_CORES = int(1)
+SIM_CORES = int(4)
+ANA_CORES = int(1)
 
 # Walltimes configuration
 MIN_HOURS = 2.0
@@ -60,6 +60,7 @@ DAY_WAIT = 24.0
 TWO_DAYS = 48.0
 ONE_WEEK = 168.0
 TWO_WEEKS = 336.0
+
 
 
 project = signac.get_project()
@@ -72,7 +73,7 @@ class Custom_environment(DefaultSlurmEnvironment):
 
 @FlowProject.post(init_written)
 @FlowProject.post(mdp_written)
-@FlowProject.operation(directives={"np": int(BUILD_CORES), "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS})
+@FlowProject.operation(directives={"np": BUILD_CORES, "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS})
 def build_input(job):
     with job:
         import sys
@@ -368,7 +369,7 @@ def build_input(job):
 @FlowProject.pre(init_written)
 @FlowProject.pre(mdp_written)
 @FlowProject.post(templatedOrEquilibrated_eqNVT)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": MID_HOURS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": MID_HOURS}, with_job=True, cmd=True)
 def EQ_NVT(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NVT}.mdp -c init.gro -p init.top -o {names.NAME_EQ_NVT}.tpr -maxwarn 99')
     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NVT}')
@@ -380,7 +381,7 @@ def EQ_NVT(job):
 @FlowProject.pre(mdp_written)
 @FlowProject.pre(eq_nvt_post)
 @FlowProject.post(templatedOrEquilibrated_eqNPT)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def EQ_NPT_BERENDSEN(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NPT_BERENDSEN}.mdp -c {names.NAME_EQ_NVT}.gro -p init.top -o {names.NAME_EQ_NPT_BERENDSEN}.tpr -maxwarn 99')
     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NPT_BERENDSEN}')
@@ -392,7 +393,7 @@ def EQ_NPT_BERENDSEN(job):
 @FlowProject.pre(mdp_written)
 @FlowProject.pre(templatedOrEquilibrated_eqNPT)
 @FlowProject.post(eq_canon_post)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def EQ_CANON(job):
     if not(job.sp.unNested_usesTemplates):
     	build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_CANON}.mdp -c {names.NAME_EQ_NPT_BERENDSEN}.gro -p init.top -o {names.NAME_EQ_CANON}.tpr -maxwarn 99')
@@ -407,7 +408,7 @@ def EQ_CANON(job):
 @FlowProject.pre(mdp_written)
 @FlowProject.pre(eq_canon_post)
 @FlowProject.post(pro_canon_post)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def PRO_CANON(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_PRO_CANON}.mdp -c {names.NAME_EQ_CANON}.gro -p init.top -o {names.NAME_PRO_CANON}.tpr -maxwarn 99')
     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_PRO_CANON}')
@@ -430,7 +431,7 @@ def FREE_ENERGY_FILES_RENAMED(job):
 @FlowProject.pre(free_energy_bar_copied)
 @FlowProject.pre(pro_canon_post)
 @FlowProject.post(data_collected)
-@FlowProject.operation(directives={"np": int(ANA_CORES), "ngpu": 0, "memory": 1.1, "walltime": MIN_HOURS})
+@FlowProject.operation(directives={"np": ANA_CORES, "ngpu": 0, "memory": 1.1, "walltime": MIN_HOURS})
 def GRAPH_AND_COLLECT_PROPERTIES(job):
     with job:
         properties_of_interest = ["Potential", "Pressure", "Total-Energy", "Temperature", "Density"]
@@ -570,7 +571,7 @@ def GRAPH_AND_COLLECT_PROPERTIES(job):
 @FlowProject.pre(xvg_present_for_all)
 @FlowProject.post(aggregated_data_present)
 @FlowProject.operation(
-    directives={"np": int(ANA_CORES), "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS},
+    directives={"np": ANA_CORES, "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS},
     aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.unNested_usesTemplates, job.sp.replicate))
 )
 def AGGREGATE_FREE_ENERGY(*jobs):
