@@ -11,24 +11,7 @@ Contributors:
 """
 
 from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
-from files.python_files import job_tester
+
 import math
 # pyrefly: ignore [missing-import]
 import numpy as np
@@ -66,9 +49,9 @@ from files.python_files.job_tester import (
 )
 
 # Cores configuration
-BUILD_CORES = 1
-SIM_CORES = 4
-ANA_CORES = 1
+BUILD_CORES = int(1)
+SIM_CORES = int(4)
+ANA_CORES = int(1)
 
 # Walltimes configuration
 MIN_HOURS = 2.0
@@ -77,6 +60,7 @@ DAY_WAIT = 24.0
 TWO_DAYS = 48.0
 ONE_WEEK = 168.0
 TWO_WEEKS = 336.0
+
 
 
 project = signac.get_project()
@@ -89,7 +73,7 @@ class Custom_environment(DefaultSlurmEnvironment):
 
 @FlowProject.post(init_written)
 @FlowProject.post(mdp_written)
-@FlowProject.operation(directives={"np": int(BUILD_CORES), "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS})
+@FlowProject.operation(directives={"np": BUILD_CORES, "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS})
 def build_input(job):
     with job:
         import sys
@@ -121,13 +105,19 @@ def build_input(job):
             polypeptide_charge = 0
 
         net_ion_charge = metal_ion_charge + polypeptide_charge; net_ion_charge=int(net_ion_charge)
+        print(f"Metal: {job.sp.metal}, Polypeptide: {job.sp.polypeptide}, Net Ion Charge: {net_ion_charge}")
         if net_ion_charge > 0:
             counterion_str = 'Cl'
         elif net_ion_charge < 0:
             counterion_str = 'Li'
         counterion_count = abs(net_ion_charge)
 
-        box_length = 3.5
+        init_box_length = 3.5  # nm
+        init_n_water_molecules = 1000
+        box_length_multiplier = 1.83
+        box_length = init_box_length * box_length_multiplier
+        n_water_molecules = int(init_n_water_molecules * (box_length_multiplier ** 3))
+        
 
         # Load small molecules via RDKit
         water_rd = Chem.MolFromMol2File(
@@ -172,29 +162,70 @@ def build_input(job):
                             )
                             break
 
-            # Create TB ion molecule with position from original PDB
-            tb_mol = Molecule.from_smiles('[Tb+3]')
-            tb_mol.atoms[0].formal_charge = 3 * unit.elementary_charge
+            # Create the ACTUAL target metal ion (not Tb) at the TB template position
+            # This avoids having two metal ions (template Tb + target metal)
+            metal_smiles = f'[{job.sp.metal}+{metal_ion_charge}]'
+            target_metal_mol = Molecule.from_smiles(metal_smiles)
+            target_metal_mol.atoms[0].formal_charge = metal_ion_charge * unit.elementary_charge
             if tb_coords is not None:
-                tb_mol.add_conformer(np.array([tb_coords]) * unit.angstrom)
+                target_metal_mol.add_conformer(np.array([tb_coords]) * unit.angstrom)
 
             # Load pre-cleaned polypeptide topology (cleaned by unscrew_polypeptide.py)
             cleaned_pdb_path = f'{names.PROJECT_DIR}/files/coordinates/polypeptide/{job.sp.polypeptide}{names.CLEANED_PDB_SUFFIX}.pdb'
             polypeptide_topology = Topology.from_pdb(cleaned_pdb_path)
 
-            # Add TB ion to the topology
-            tb_topology = Topology.from_molecules([tb_mol])
-            for mol in tb_topology.molecules:
+            # Add target metal ion to the topology
+            metal_topology = Topology.from_molecules([target_metal_mol])
+            for mol in metal_topology.molecules:
                 polypeptide_topology.add_molecule(mol)
+
+            # Center the solute in the box to avoid coordinates outside box bounds
+            # The original PDB coordinates are in crystallographic frame, need to translate
+            box_center = np.array([box_length / 2, box_length / 2, box_length / 2])  # nm
+
+            # Collect all atom positions to find centroid
+            all_positions = []
+            for mol in polypeptide_topology.molecules:
+                if mol.n_conformers > 0:
+                    # Convert to nm for consistency
+                    positions_nm = mol.conformers[0].to(unit.nanometer).magnitude
+                    all_positions.extend(positions_nm)
+
+            if all_positions:
+                all_positions = np.array(all_positions)
+                centroid = np.mean(all_positions, axis=0)
+                translation = box_center - centroid
+
+                # Apply translation to all molecules in the topology
+                for mol in polypeptide_topology.molecules:
+                    if mol.n_conformers > 0:
+                        old_conf = mol.conformers[0].to(unit.nanometer).magnitude
+                        new_conf = old_conf + translation
+                        # Clear and set new conformer
+                        mol._conformers = []
+                        mol.add_conformer(new_conf * unit.nanometer)
 
             solute_topology = polypeptide_topology
 
-        if counterion_count != 0:
-            molecules_dummy = [water_mol, cation_mol, li_mol]
-            number_of_copies_dummy = [1000, 1, counterion_count]
+        # Build molecule list for pack_box
+        # For polypeptide cases: metal is already in solute_topology, don't add separately
+        # For DUM3+ case: metal must be added to molecules_dummy
+        if solute_topology is not None:
+            # Polypeptide case: metal already in solute, only add water + counterions
+            if counterion_count != 0:
+                molecules_dummy = [water_mol, li_mol]
+                number_of_copies_dummy = [n_water_molecules, counterion_count]
+            else:
+                molecules_dummy = [water_mol]
+                number_of_copies_dummy = [n_water_molecules]
         else:
-            molecules_dummy = [water_mol, cation_mol]
-            number_of_copies_dummy = [1000, 1]
+            # DUM3+ case: need to add cation_mol since there's no solute with metal
+            if counterion_count != 0:
+                molecules_dummy = [water_mol, cation_mol, li_mol]
+                number_of_copies_dummy = [n_water_molecules, 1, counterion_count]
+            else:
+                molecules_dummy = [water_mol, cation_mol]
+                number_of_copies_dummy = [n_water_molecules, 1]
 
         # Pack the box using OpenFF's pack_box
         topology = pack_box(
@@ -215,12 +246,6 @@ def build_input(job):
 
         if os.path.exists('init_pointenergy.mdp'):
             os.remove('init_pointenergy.mdp')
-
-        # pre-equilibration templating from EQ_NPT_BERENDSEN.gro
-        shutil.copy(
-            f"{names.PROJECT_DIR}/files/coordinates/equilibrated_frames/{names.NAME_EQ_NPT_BERENDSEN}.gro",
-            f"{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro"
-        )
 
         if job.sp.unNested_usesTemplates:
             try:
@@ -344,7 +369,7 @@ def build_input(job):
 @FlowProject.pre(init_written)
 @FlowProject.pre(mdp_written)
 @FlowProject.post(templatedOrEquilibrated_eqNVT)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": MID_HOURS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": MID_HOURS}, with_job=True, cmd=True)
 def EQ_NVT(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NVT}.mdp -c init.gro -p init.top -o {names.NAME_EQ_NVT}.tpr -maxwarn 99')
     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NVT}')
@@ -356,7 +381,7 @@ def EQ_NVT(job):
 @FlowProject.pre(mdp_written)
 @FlowProject.pre(eq_nvt_post)
 @FlowProject.post(templatedOrEquilibrated_eqNPT)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def EQ_NPT_BERENDSEN(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_NPT_BERENDSEN}.mdp -c {names.NAME_EQ_NVT}.gro -p init.top -o {names.NAME_EQ_NPT_BERENDSEN}.tpr -maxwarn 99')
     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_EQ_NPT_BERENDSEN}')
@@ -368,7 +393,7 @@ def EQ_NPT_BERENDSEN(job):
 @FlowProject.pre(mdp_written)
 @FlowProject.pre(templatedOrEquilibrated_eqNPT)
 @FlowProject.post(eq_canon_post)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def EQ_CANON(job):
     if not(job.sp.unNested_usesTemplates):
     	build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_EQ_CANON}.mdp -c {names.NAME_EQ_NPT_BERENDSEN}.gro -p init.top -o {names.NAME_EQ_CANON}.tpr -maxwarn 99')
@@ -383,7 +408,7 @@ def EQ_CANON(job):
 @FlowProject.pre(mdp_written)
 @FlowProject.pre(eq_canon_post)
 @FlowProject.post(pro_canon_post)
-@FlowProject.operation(directives={"np": int(SIM_CORES), "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
+@FlowProject.operation(directives={"np": SIM_CORES, "ngpu": 1, "memory": 3.2, "walltime": TWO_DAYS}, with_job=True, cmd=True)
 def PRO_CANON(job):
     build_mdp = str(f'{names.GMX_PREFIX} grompp -f {names.NAME_PRO_CANON}.mdp -c {names.NAME_EQ_CANON}.gro -p init.top -o {names.NAME_PRO_CANON}.tpr -maxwarn 99')
     run_gmx = str(f'{names.GMX_PREFIX} mdrun -nt {SIM_CORES} -deffnm {names.NAME_PRO_CANON}')
@@ -406,7 +431,7 @@ def FREE_ENERGY_FILES_RENAMED(job):
 @FlowProject.pre(free_energy_bar_copied)
 @FlowProject.pre(pro_canon_post)
 @FlowProject.post(data_collected)
-@FlowProject.operation(directives={"np": int(ANA_CORES), "ngpu": 0, "memory": 1.1, "walltime": MIN_HOURS})
+@FlowProject.operation(directives={"np": ANA_CORES, "ngpu": 0, "memory": 1.1, "walltime": MIN_HOURS})
 def GRAPH_AND_COLLECT_PROPERTIES(job):
     with job:
         properties_of_interest = ["Potential", "Pressure", "Total-Energy", "Temperature", "Density"]
@@ -546,7 +571,7 @@ def GRAPH_AND_COLLECT_PROPERTIES(job):
 @FlowProject.pre(xvg_present_for_all)
 @FlowProject.post(aggregated_data_present)
 @FlowProject.operation(
-    directives={"np": int(ANA_CORES), "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS},
+    directives={"np": ANA_CORES, "ngpu": 0, "memory": 3.2, "walltime": MIN_HOURS},
     aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.unNested_usesTemplates, job.sp.replicate))
 )
 def AGGREGATE_FREE_ENERGY(*jobs):

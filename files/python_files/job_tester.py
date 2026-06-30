@@ -23,11 +23,6 @@ import shutil
 from files.python_files import names
 
 
-# GROMACS log file status strings
-finished_gmxStr = "Finished mdrun on "
-failed_gmxStr_start = "Received the "
-failed_gmxStr_end = " signal, stopping within"
-
 extension_list_of_common_files = [".gro", ".trr", ".log", ".edr", ".tpr"]   # former extension_list_list
 extension_list_inits = [".gro",".top"]
 
@@ -98,19 +93,39 @@ def runWithTemplateAbsent(job):
     return test_passed
 
 
-def gmx_log_finished(job, log_filename):
-    """Check if GROMACS log file indicates successful completion (reads from end)."""
+import os
+
+def gmx_log_finished(job, log_filename, tail_bytes=30000):
+    """
+    Check if GROMACS log file indicates successful completion.
+    Optimized for high-throughput workflow queries via byte-seeking.
+    """
     with job:
         if not job.isfile(log_filename):
             return False
-        with open(log_filename, "r") as f:
-            lines = f.readlines()
-        # Read from end for efficiency
-        for line in reversed(lines):
-            if failed_gmxStr_start in line and failed_gmxStr_end in line:
+            
+        # Read strictly the tail end of the file in binary mode
+        with open(log_filename, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            file_size = f.tell()
+            
+            if file_size == 0:
                 return False
-            if finished_gmxStr in line:
-                return True
+                
+            # Seek back from the end (or from the start if it's a tiny file)
+            seek_pos = max(0, file_size - tail_bytes)
+            f.seek(seek_pos, os.SEEK_SET)
+            
+            # Load the chunk as a single byte-string
+            tail_data = f.read()
+            
+    # Perform C-level substring checks directly on the byte block.
+    # We check for the completion string first.
+    if b"Finished mdrun on " in tail_data:
+        # If it finished, ensure it wasn't a graceful shutdown from an interrupt
+        if b"stopping within" not in tail_data:
+            return True
+            
     return False
 
 ############################__BUILD_JOBS__############################
