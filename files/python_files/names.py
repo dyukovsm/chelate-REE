@@ -43,7 +43,7 @@ NAME_PRO_CANON = "PRO_CANON"
 NAME_PRE_EQ_NPT_BERENDSEN = "template_PRE_EQ_NPT_BERENDSEN"
 
 # Thermodynamic conditions
-TEMPERATURE = 298.0
+TEMPERATURE = 300.0
 # Pressure in bar
 PRESSURE = 1.0
 
@@ -65,18 +65,18 @@ METAL_FORMAL_CHARGES = {
 }
 
 # GROMACS MD steps and output controls
-SMALL_EQ_STEPS      =int(500000)# int(1000000)
+SMALL_EQ_STEPS      =int(1000000)# int(1000000)
 # MID_EQ_STEPS renamed to follow SIM core naming standard
 MID_EQ_STEPS        = int(1000000)
 LONG_EQ_STEPS       = int(10000000)
 SLOW_OUTPUT         = int(10000) # 10000
 NORMAL_CALC         = int(500)
 
-PRO_STEPS             = int(500000)# int(500000)
-PRO_FREE_ENERGY_STEPS = int(500000)# int(500000)
-FAST_OUTPUT           = int(1000) # 2000
-PRO_DHDL              = int(1000)
-FAST_CALC             = int(100)
+PRO_STEPS             = int(5000000)# int(500000)
+PRO_FREE_ENERGY_STEPS = int(5000000)# int(500000)
+FAST_OUTPUT           = int(5000) # 2000
+PRO_DHDL              = int(5000)
+FAST_CALC             = int(500)
 
 ### GROMACS MD steps and output controls
 ##SMALL_EQ_STEPS      = int(1000)

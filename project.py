@@ -290,7 +290,7 @@ def build_input(job):
         "vdw_modifier": "None",
         "rvdw": names.RCUT,
         "rvdw_switch": 0.0,
-        "DispCorr": "EnerPres",
+        "DispCorr": 'no', #"EnerPres",
         "tcoupl": "no",
         "ref_t": names.TEMPERATURE
     }

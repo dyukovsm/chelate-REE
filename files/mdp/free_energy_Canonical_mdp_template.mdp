@@ -39,7 +39,7 @@ epsilon-surface          = 0
 ; Temperature coupling
 tcoupl                   = {{tcoupl}}
 tc-grps                  = system
-tau-t                    = 1.0
+tau-t                    = 0.2
 ref-t                    = {{ref_t}};298.15
 
 
