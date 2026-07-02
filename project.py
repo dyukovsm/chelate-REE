@@ -49,7 +49,7 @@ from files.python_files.job_tester import (
 )
 
 # Cores configuration
-BUILD_CORES = int(1)
+BUILD_CORES = int(8)
 SIM_CORES = int(4)
 ANA_CORES = int(1)
 
@@ -114,7 +114,7 @@ def build_input(job):
 
         init_box_length = 3.5  # nm
         init_n_water_molecules = 1000
-        box_length_multiplier = 1.83
+        box_length_multiplier = 1.0 #1.83
         box_length = init_box_length * box_length_multiplier
         n_water_molecules = int(init_n_water_molecules * (box_length_multiplier ** 3))
         
@@ -237,7 +237,7 @@ def build_input(job):
 
         ff = ForceField(
             'ff14sb_off_impropers_0.0.4.offxml',   # protein residue typing + library charges
-            'tip3p.offxml',                          # water
+            f'{names.PROJECT_DIR}/files/xml/tip3p.offxml',                          # water
             f'{names.PROJECT_DIR}/files/xml/custom_ree.offxml'  # REE ions (including TB in peptide)
         )
 
@@ -250,16 +250,17 @@ def build_input(job):
         if job.sp.unNested_usesTemplates:
             try:
                 import MDAnalysis as mda
-                u = mda.Universe(f"{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro")
+                u = mda.Universe(f"{names.PROJECT_DIR}/files/coordinates/equilibrated_frames/{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro")
                 nd = u.select_atoms("name Tb")
                 nd.names = [job.sp.metal]
                 nd.residues.resnames = [job.sp.metal]
                 u.atoms.write(f"{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro")
             except:
                 # Fallback: simple string replacement (no MDAnalysis needed)
-                gro_file = f"{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro"
+                gro_file = f"{names.PROJECT_DIR}/files/coordinates/equilibrated_frames/{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro"
                 with open(gro_file, 'r') as f:
                     content = f.read()
+                gro_file = f"{names.NAME_PRE_EQ_NPT_BERENDSEN}.gro"
                 content = content.replace("Tb", job.sp.metal)
                 with open(gro_file, 'w') as f:
                     f.write(content)
