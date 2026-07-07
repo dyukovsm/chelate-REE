@@ -67,16 +67,16 @@ METAL_FORMAL_CHARGES = {
 # GROMACS MD steps and output controls
 SMALL_EQ_STEPS      =int(1000000)# int(1000000)
 # MID_EQ_STEPS renamed to follow SIM core naming standard
-MID_EQ_STEPS        = int(1000000)
-LONG_EQ_STEPS       = int(10000000)
+MID_EQ_STEPS        = int(500000)
+LONG_EQ_STEPS       = int(1000000)
 SLOW_OUTPUT         = int(10000) # 10000
 NORMAL_CALC         = int(500)
 
-PRO_STEPS             = int(5000000)# int(500000)
-PRO_FREE_ENERGY_STEPS = int(5000000)# int(500000)
-FAST_OUTPUT           = int(5000) # 2000
-PRO_DHDL              = int(5000)
-FAST_CALC             = int(500)
+PRO_STEPS             = int(500000)# int(500000)
+PRO_FREE_ENERGY_STEPS = int(500000)# int(500000)
+FAST_OUTPUT           = int(1000) # 2000
+PRO_DHDL              = int(200)
+FAST_CALC             = int(100)
 
 ### GROMACS MD steps and output controls
 ##SMALL_EQ_STEPS      = int(1000)
@@ -92,7 +92,7 @@ FAST_CALC             = int(500)
 ##FAST_CALC             = int(10)
 
 # Cut-off radius in nm
-RCUT = 1.4
+RCUT = 1.0
 
 # Data filenames and locations (moved to names.py to prevent circular imports)
 GENERAL_LOCAL_DATA = 'raw_general_data_for'
@@ -104,6 +104,21 @@ CLEANED_PDB_SUFFIX = "_cleanedPDB"
 # Electrostatic and LJ lambda mapping lookup dict (Renamed from ljLam_eleLam_to_initLam)
 # First element of the tuple is electrostatic lambda, second is Lennard-Jones lambda
 eleLam_ljLam_to_initLam = {
+    #Li-Merz lambda values
+    #(0.0, 0.0): 0,
+    #(0.12923, 0.0): 1,
+    #(0.2544, 0.0): 2,
+    #(0.29707, 0.0): 3,
+    #(0.5, 0.0): 4,
+    #(0.70292, 0.0): 5,
+    #(0.87076, 0.0): 6,
+    #(0.97455, 0.0): 7,
+    #(1.0, 0.0): 8,
+    #(1.0, 0.1127): 9,
+    #(1.0, 0.5): 10,
+    #(1.0, 0.88729): 11,
+    #(1.0, 1.0): 12
+
  (0.000, 0.0): 0,
  (0.025, 0.0): 1,
  (0.050, 0.0): 2,

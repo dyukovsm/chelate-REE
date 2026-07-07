@@ -433,15 +433,16 @@ def calculate_free_energy(target_dir):
 
         del ax, fig
 
-        convergence = forward_backward_convergence(u_nk_list, 'MBAR', num=min(10, len(u_nk_list[0])))
+        #7/7/2026
+        #convergence = forward_backward_convergence(u_nk_list, 'MBAR', num=min(10, len(u_nk_list[0])), relative_tolerance=1e-6)
 
-        unit_converted_convergence = get_unit_converter(UNIT_INPUT)(convergence)
-        unit_converted_convergence["data_fraction"] = convergence["data_fraction"]
+        #unit_converted_convergence = get_unit_converter(UNIT_INPUT)(convergence)
+        #unit_converted_convergence["data_fraction"] = convergence["data_fraction"]
 
-        ax = plot_convergence(convergence, units=UNIT_INPUT)
-        ax.figure.savefig(f'{GENERAL_FILE_PREFIX}_{CONVERGNCE_ROOT}_{MBAR_SUFFIX}.png')
+        #ax = plot_convergence(convergence, units=UNIT_INPUT)
+        #ax.figure.savefig(f'{GENERAL_FILE_PREFIX}_{CONVERGNCE_ROOT}_{MBAR_SUFFIX}.png')
 
-        del ax
+        #del ax
 
         ax = plot_ti_dhdl(dHdl_result, units=UNIT_INPUT)
         ax.figure.savefig(f'{GENERAL_FILE_PREFIX}_{DH_DL_ROOT}_{TI_SUFFIX}.png')

@@ -287,10 +287,10 @@ def build_input(job):
         "coulomb_modifier": "None",
         "rcoulomb_switch": 0.0,
         "vdwtype": "Cut-off",
-        "vdw_modifier": "None",
+        "vdw_modifier": "Potential-shift", #"None",
         "rvdw": names.RCUT,
         "rvdw_switch": 0.0,
-        "DispCorr": 'no', #"EnerPres",
+        "DispCorr": "EnerPres", #'no',
         "tcoupl": "no",
         "ref_t": names.TEMPERATURE
     }
