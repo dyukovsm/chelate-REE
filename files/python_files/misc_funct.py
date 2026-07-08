@@ -162,6 +162,9 @@ def give_name_return_whichChunk(job, chunk_dict):
 
 def calculate_free_energy(target_dir):
     import sys
+    import os
+    import subprocess
+    
     current_cwd = os.getcwd()
     os.chdir(target_dir)
     original_stdout = sys.stdout
@@ -169,6 +172,30 @@ def calculate_free_energy(target_dir):
     log_file = open("alchemlyb_log.txt", "w")
     sys.stdout = log_file
     sys.stderr = log_file
+    
+    # Save original environment variables so we don't break GROMACS subprocesses that need GPU
+    orig_cuda = os.environ.get("CUDA_VISIBLE_DEVICES")
+    orig_jax_x4 = os.environ.get("JAX_ENABLE_X64")
+    orig_jax_plat = os.environ.get("JAX_PLATFORMS")
+    
+    # Test if JAX GPU is functional in a subprocess to absorb any segfaults
+    test_code = (
+        "import os\n"
+        "os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'\n"
+        "import jax\n"
+        "try:\n"
+        "    jax.devices('gpu')\n"
+        "except Exception:\n"
+        "    sys.exit(1)\n"
+    )
+    result = subprocess.run([sys.executable, "-c", test_code], capture_output=True)
+    need_cpu_fallback = (result.returncode != 0)
+    
+    if need_cpu_fallback:
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        os.environ["JAX_ENABLE_X64"] = "True"
+        os.environ["JAX_PLATFORMS"] = "cpu"
+
     try:
         # my goal is to run the worklow manually calling the functions directly.
         #from alchemtest.gmx import load_ABFE
@@ -184,8 +211,6 @@ def calculate_free_energy(target_dir):
         from pathlib import Path
         from alchemlyb.estimators import MBAR, TI
         from alchemlyb.postprocessors.units import get_unit_converter
-        #from alchemlyb.visualisation.mbar_matrix import plot_mbar_overlap_matrix
-        #from alchemlyb.visualisation.dF_state import plot_dF_state
         from alchemlyb.convergence import forward_backward_convergence
         from alchemlyb.visualisation import plot_convergence, plot_dF_state, plot_mbar_overlap_matrix, plot_ti_dhdl
 
@@ -431,10 +456,14 @@ def calculate_free_energy(target_dir):
         fig = plot_dF_state([mbar_result,dHdl_result],units=UNIT_INPUT)
         fig.savefig(f'{GENERAL_FILE_PREFIX}_{STATE_ROOT}_{TI_SUFFIX}with{MBAR_SUFFIX}.png')
 
-        del ax, fig
+        #del ax, fig
 
+<<<<<<< HEAD
         #7/7/2026
         #convergence = forward_backward_convergence(u_nk_list, 'MBAR', num=min(10, len(u_nk_list[0])), relative_tolerance=1e-6)
+=======
+        #convergence = forward_backward_convergence(u_nk_list, 'MBAR', num=min(10, len(u_nk_list[0])))
+>>>>>>> 6c88525 (fix(mbar): add dynamic GPU health check to prevent JAX segmentation faults)
 
         #unit_converted_convergence = get_unit_converter(UNIT_INPUT)(convergence)
         #unit_converted_convergence["data_fraction"] = convergence["data_fraction"]
@@ -467,3 +496,17 @@ def calculate_free_energy(target_dir):
         sys.stderr = original_stderr
         log_file.close()
         os.chdir(current_cwd)
+        # Restore environment variables
+        if need_cpu_fallback:
+            if orig_cuda is None:
+                os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+            else:
+                os.environ["CUDA_VISIBLE_DEVICES"] = orig_cuda
+            if orig_jax_x4 is None:
+                os.environ.pop("JAX_ENABLE_X64", None)
+            else:
+                os.environ["JAX_ENABLE_X64"] = orig_jax_x4
+            if orig_jax_plat is None:
+                os.environ.pop("JAX_PLATFORMS", None)
+            else:
+                os.environ["JAX_PLATFORMS"] = orig_jax_plat
