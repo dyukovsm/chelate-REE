@@ -507,74 +507,101 @@ def calculate_free_energy(target_dir):
             else:
                 os.environ["JAX_PLATFORMS"] = orig_jax_plat
 
-#DeepSeek RDF analysis V3
+#DeepSeek RDF analysis V4
+import numpy as np
+import mdtraj as md
+import freud
+from scipy.ndimage import gaussian_filter1d
+from scipy.optimize import curve_fit   # for Gaussian fitting
+
+# Constant for shell onset definition
+N_SIGMA = 3.0
+
+def _gauss(r, A, mu, sigma, c):
+    return A * np.exp(-0.5 * ((r - mu) / sigma) ** 2) + c
+
+def _fit_shell(r, g, lo, hi, mu0):
+    """Fit one Gaussian + constant offset inside [lo, hi]."""
+    mask = (r >= lo) & (r <= hi)
+    if np.sum(mask) < 5:
+        return None
+    rw, gw = r[mask], g[mask]
+    A0 = gw.max() - np.median(gw)
+    p0 = [A0, mu0, 0.25 * (hi - lo), np.median(gw)]
+    bounds = ([0.0, lo, 1e-4, -0.5],
+              [10 * A0 + 10, hi, hi - lo, 2.0])
+    try:
+        popt, _ = curve_fit(_gauss, rw, gw, p0=p0, bounds=bounds, maxfev=100000)
+        return popt
+    except Exception:
+        return None
+
 def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
     try:
         import mdtraj as md
         import freud
         import numpy as np
         from scipy.ndimage import gaussian_filter1d
+        from scipy.optimize import curve_fit
     except ImportError:
-        print("Required libraries (mdtraj, freud, scipy) for RDF not found.")
+        print("Required libraries for RDF not found.")
         return None, None, None, None, None, None, None, None, None
 
     with job:
         traj_file = f'{names.NAME_PRO_CANON}.xtc'
         if not os.path.exists(traj_file):
             traj_file = f'{names.NAME_PRO_CANON}.trr'
-        
         top_file = f'{names.NAME_PRO_CANON}.gro'
         if not os.path.exists(top_file):
             top_file = 'init.gro'
         if not os.path.exists(traj_file) or not os.path.exists(top_file):
             return None, None, None, None, None, None, None, None, None
-            
+
         try:
             traj = md.load(traj_file, top=top_file)
         except Exception as e:
             print(f"Error loading trajectory for job {job.id}: {e}")
             return None, None, None, None, None, None, None, None, None
-        
+
         metal_name = job.sp.metal
         metal_sel = traj.topology.select(f"name {metal_name} or element {metal_name}")
         oxygen_sel = traj.topology.select("name O or name OW or element O")
-        
         if len(metal_sel) == 0 or len(oxygen_sel) == 0:
             return None, None, None, None, None, None, None, None, None
-            
+
         min_box_length = np.min(traj.unitcell_lengths)
         r_max = min_box_length / 2.01
+
+        # ---- Compute RDF ----
         rdf = freud.density.RDF(bins=200, r_max=r_max, r_min=0.0)
-        
         for i, frame in enumerate(traj.xyz):
             box_matrix = traj.unitcell_vectors[i]
             box = freud.box.Box.from_matrix(box_matrix)
             system = (box, frame[oxygen_sel])
             rdf.compute(system, query_points=frame[metal_sel], reset=False)
-            
+
+        # ---- Extract RDF arrays ----
         r = rdf.bin_centers
         y = rdf.rdf
-        
-        # Smooth the RDF
-        y_smooth = gaussian_filter1d(y, sigma=1.0)
-        
-        # ---- 1st maximum (within 0.5 nm) ----
+        y_smooth = gaussian_filter1d(y, sigma=1.0)   # smoothed for extrema
+
+        # ---- Detect 1st, 2nd, 3rd maxima & minima ----
+        # (same as your original code, but using y_smooth for detection)
         mask = (r < 0.5)
         if np.sum(mask) == 0:
             return None, None, None, None, None, None, None, None, None
         peak1_idx = np.argmax(y_smooth[mask])
         max_1 = r[peak1_idx]
-        
-        # ---- 1st minimum ----
+
         min1_idx = len(r) - 1
         for j in range(peak1_idx, len(r) - 1):
             if y_smooth[j] < y_smooth[j+1]:
                 min1_idx = j
                 break
         min_1 = r[min1_idx]
-        cn_1 = rdf.n_r[min1_idx]
-        
-        # ---- 2nd maximum (global max after min1) ----
+        cn_1_old = rdf.n_r[min1_idx]   # old CN (fallback)
+
+        # 2nd maximum (global after min1)
         search_range = slice(min1_idx, len(r))
         if np.sum(y_smooth[search_range]) == 0:
             max_2 = 0.0
@@ -582,8 +609,7 @@ def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
         else:
             peak2_idx = min1_idx + np.argmax(y_smooth[search_range])
             max_2 = r[peak2_idx]
-        
-        # ---- 2nd minimum ----
+
         min2_idx = len(r) - 1
         for j in range(peak2_idx, len(r) - 1):
             if y_smooth[j] < y_smooth[j+1]:
@@ -591,12 +617,12 @@ def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
                 break
         if min2_idx == len(r) - 1 or peak2_idx == len(r) - 1:
             min_2 = 0.0
-            cn_2 = 0.0
+            cn_2_old = 0.0
         else:
             min_2 = r[min2_idx]
-            cn_2 = rdf.n_r[min2_idx]
-        
-        # ---- 3rd maximum (global max after min2) ----
+            cn_2_old = rdf.n_r[min2_idx]
+
+        # 3rd maximum
         if min2_idx >= len(r) - 1:
             max_3 = 0.0
             peak3_idx = len(r) - 1
@@ -608,8 +634,7 @@ def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
             else:
                 peak3_idx = min2_idx + np.argmax(y_smooth[search_range2])
                 max_3 = r[peak3_idx]
-        
-        # ---- 3rd minimum ----
+
         min3_idx = len(r) - 1
         for j in range(peak3_idx, len(r) - 1):
             if y_smooth[j] < y_smooth[j+1]:
@@ -617,59 +642,282 @@ def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
                 break
         if min3_idx == len(r) - 1 or peak3_idx == len(r) - 1:
             min_3 = 0.0
-            cn_3 = 0.0
+            cn_3_old = 0.0
         else:
             min_3 = r[min3_idx]
-            cn_3 = rdf.n_r[min3_idx]
-        
+            cn_3_old = rdf.n_r[min3_idx]
+
+        # ---- Gaussian fitting for shell onsets ----
+        maxima = [max_1, max_2, max_3]
+        minima = [min_1, min_2, min_3]
+        valid = [(m, mn) for m, mn in zip(maxima, minima) if m > 0 and mn > 0]
+        if len(valid) >= 2:
+            lefts = [0.0] + [mn for _, mn in valid[:-1]]
+            fits = []
+            onsets = []
+            for i, ((mu0, mn), lo) in enumerate(zip(valid, lefts)):
+                hi = mn
+                popt = _fit_shell(r, y_smooth, lo, hi, mu0)
+                if popt is not None:
+                    A, mu, sigma, c = popt
+                    fits.append((A, mu, sigma, c))
+                    onset = np.clip(mu - N_SIGMA * sigma, lo, mu)
+                    onsets.append(onset)
+                else:
+                    fits.append(None)
+                    onsets.append(mn)   # fallback to minimum
+            # Compute CNs at onsets
+            if len(onsets) >= 2:
+                cn_1_new = np.interp(onsets[1], r, rdf.n_r)
+            else:
+                cn_1_new = cn_1_old
+            if len(onsets) >= 3:
+                cn_2_new = np.interp(onsets[2], r, rdf.n_r)
+            else:
+                cn_2_new = cn_2_old
+            cn_3_new = 0.0   # not used
+        else:
+            # fallback: use old CNs (at minima)
+            cn_1_new = cn_1_old
+            cn_2_new = cn_2_old
+            cn_3_new = 0.0
+            fits, onsets = [], []
+
         # ---- Debug plots ----
         if debug_mode and target_dir is not None:
             import matplotlib.pyplot as plt
             import pandas as pd
-            
+            # Save text file
             debug_txt_path = os.path.join(target_dir, f"{job.id}_debug_rdf.txt")
             df = pd.DataFrame({"r_nm": r, "rdf": y, "rdf_smooth": y_smooth, "cn": rdf.n_r})
             df.to_csv(debug_txt_path, index=False, sep='\t')
-            
-            debug_plot_path_rdf = os.path.join(target_dir, f"{job.id}_debug_rdf.png")
-            fig, ax = plt.subplots(figsize=(8, 6))
-            ax.set_xlabel('Distance r (nm)')
-            ax.set_ylabel('RDF g(r)')
+
+            # RDF plot
+            fig, ax = plt.subplots(figsize=(8,6))
             ax.plot(r, y, color='tab:blue', alpha=0.5, label='Raw RDF')
             ax.plot(r, y_smooth, color='tab:red', label='Smoothed RDF')
-            # Mark minima and maxima
+            # Mark extrema
             ax.axvline(x=min_1, color='r', linestyle='--', label=f'min 1 ({min_1:.3f} nm)')
             ax.axvline(x=max_1, color='orange', linestyle=':', label=f'max 1 ({max_1:.3f} nm)')
-            if min_2 > 0.0:
+            if min_2 > 0:
                 ax.axvline(x=min_2, color='g', linestyle='--', label=f'min 2 ({min_2:.3f} nm)')
-            if max_2 > 0.0:
+            if max_2 > 0:
                 ax.axvline(x=max_2, color='purple', linestyle=':', label=f'max 2 ({max_2:.3f} nm)')
-            if min_3 > 0.0:
+            if min_3 > 0:
                 ax.axvline(x=min_3, color='brown', linestyle='--', label=f'min 3 ({min_3:.3f} nm)')
-            if max_3 > 0.0:
+            if max_3 > 0:
                 ax.axvline(x=max_3, color='cyan', linestyle=':', label=f'max 3 ({max_3:.3f} nm)')
+            # Overlay Gaussians and onsets
+            colours = ['tab:blue', 'tab:orange', 'tab:green']
+            rr = np.linspace(r.min(), r.max(), 2000)
+            for i, (popt, col) in enumerate(zip(fits, colours)):
+                if popt is not None:
+                    A, mu, sigma, c = popt
+                    ax.plot(rr, _gauss(rr, A, mu, sigma, c), color=col, lw=1.2, alpha=0.7,
+                            label=f'shell {i+1} fit')
+                    onset = onsets[i]
+                    ax.axvline(x=onset, color=col, linestyle='-.', lw=1.5,
+                               label=f'onset {i+1} ({onset:.3f} nm)')
             ax.legend()
+            ax.set_xlabel('Distance r (nm)')
+            ax.set_ylabel('RDF g(r)')
             fig.tight_layout()
-            plt.savefig(debug_plot_path_rdf, dpi=300)
+            plt.savefig(os.path.join(target_dir, f"{job.id}_debug_rdf.png"), dpi=300)
             plt.close(fig)
-            
-            debug_plot_path_cn = os.path.join(target_dir, f"{job.id}_debug_cn.png")
-            fig, ax = plt.subplots(figsize=(8, 6))
+
+            # CN plot
+            fig, ax = plt.subplots(figsize=(8,6))
+            ax.plot(r, rdf.n_r, color='tab:green', label='CN')
+            ax.axvline(x=min_1, color='r', linestyle='--', label=f'min 1')
+            if min_2 > 0:
+                ax.axvline(x=min_2, color='g', linestyle='--', label=f'min 2')
+            if min_3 > 0:
+                ax.axvline(x=min_3, color='brown', linestyle='--', label=f'min 3')
+            # Mark onsets with CN values
+            for i, onset in enumerate(onsets):
+                if onset > 0:
+                    val = np.interp(onset, r, rdf.n_r)
+                    ax.plot(onset, val, 'o', color=colours[i], ms=6)
+                    ax.annotate(f'CN={val:.2f}', xy=(onset, val),
+                                xytext=(5, -10), textcoords='offset points',
+                                color=colours[i], fontsize=9)
             ax.set_xlabel('Distance r (nm)')
             ax.set_ylabel('Coordination Number')
-            ax.plot(r, rdf.n_r, color='tab:green', label='CN')
-            ax.axvline(x=min_1, color='r', linestyle='--', label=f'CN 1: {cn_1:.2f}')
-            if min_2 > 0.0:
-                ax.axvline(x=min_2, color='g', linestyle='--', label=f'CN 2: {cn_2:.2f}')
-            if min_3 > 0.0:
-                ax.axvline(x=min_3, color='brown', linestyle='--', label=f'CN 3: {cn_3:.2f}')
-            # Set y‑limit based on the largest CN found
-            max_cn = max(cn_1, cn_2, cn_3)
-            if max_cn > 0:
-                ax.set_ylim(0, max_cn * 1.5)
+            max_cn = np.interp(r[-1], r, rdf.n_r)
+            ax.set_ylim(0, max_cn * 1.1)
             ax.legend()
             fig.tight_layout()
-            plt.savefig(debug_plot_path_cn, dpi=300)
+            plt.savefig(os.path.join(target_dir, f"{job.id}_debug_cn.png"), dpi=300)
             plt.close(fig)
-            
-        return min_1, max_1, cn_1, min_2, max_2, cn_2, min_3, max_3, cn_3
+
+        # Return: min_1, max_1, cn_1_new, min_2, max_2, cn_2_new, min_3, max_3, cn_3_new
+        return min_1, max_1, cn_1_new, min_2, max_2, cn_2_new, min_3, max_3, cn_3_new
+
+
+
+#DeepSeek RDF analysis V3
+#def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
+#    try:
+#        import mdtraj as md
+#        import freud
+#        import numpy as np
+#        from scipy.ndimage import gaussian_filter1d
+#    except ImportError:
+#        print("Required libraries (mdtraj, freud, scipy) for RDF not found.")
+#        return None, None, None, None, None, None, None, None, None
+#
+#    with job:
+#        traj_file = f'{names.NAME_PRO_CANON}.xtc'
+#        if not os.path.exists(traj_file):
+#            traj_file = f'{names.NAME_PRO_CANON}.trr'
+#        
+#        top_file = f'{names.NAME_PRO_CANON}.gro'
+#        if not os.path.exists(top_file):
+#            top_file = 'init.gro'
+#        if not os.path.exists(traj_file) or not os.path.exists(top_file):
+#            return None, None, None, None, None, None, None, None, None
+#            
+#        try:
+#            traj = md.load(traj_file, top=top_file)
+#        except Exception as e:
+#            print(f"Error loading trajectory for job {job.id}: {e}")
+#            return None, None, None, None, None, None, None, None, None
+#        
+#        metal_name = job.sp.metal
+#        metal_sel = traj.topology.select(f"name {metal_name} or element {metal_name}")
+#        oxygen_sel = traj.topology.select("name O or name OW or element O")
+#        
+#        if len(metal_sel) == 0 or len(oxygen_sel) == 0:
+#            return None, None, None, None, None, None, None, None, None
+#            
+#        min_box_length = np.min(traj.unitcell_lengths)
+#        r_max = min_box_length / 2.01
+#        rdf = freud.density.RDF(bins=200, r_max=r_max, r_min=0.0)
+#        
+#        for i, frame in enumerate(traj.xyz):
+#            box_matrix = traj.unitcell_vectors[i]
+#            box = freud.box.Box.from_matrix(box_matrix)
+#            system = (box, frame[oxygen_sel])
+#            rdf.compute(system, query_points=frame[metal_sel], reset=False)
+#            
+#        r = rdf.bin_centers
+#        y = rdf.rdf
+#        
+#        # Smooth the RDF
+#        y_smooth = gaussian_filter1d(y, sigma=1.0)
+#        
+#        # ---- 1st maximum (within 0.5 nm) ----
+#        mask = (r < 0.5)
+#        if np.sum(mask) == 0:
+#            return None, None, None, None, None, None, None, None, None
+#        peak1_idx = np.argmax(y_smooth[mask])
+#        max_1 = r[peak1_idx]
+#        
+#        # ---- 1st minimum ----
+#        min1_idx = len(r) - 1
+#        for j in range(peak1_idx, len(r) - 1):
+#            if y_smooth[j] < y_smooth[j+1]:
+#                min1_idx = j
+#                break
+#        min_1 = r[min1_idx]
+#        cn_1 = rdf.n_r[min1_idx]
+#        
+#        # ---- 2nd maximum (global max after min1) ----
+#        search_range = slice(min1_idx, len(r))
+#        if np.sum(y_smooth[search_range]) == 0:
+#            max_2 = 0.0
+#            peak2_idx = len(r) - 1
+#        else:
+#            peak2_idx = min1_idx + np.argmax(y_smooth[search_range])
+#            max_2 = r[peak2_idx]
+#        
+#        # ---- 2nd minimum ----
+#        min2_idx = len(r) - 1
+#        for j in range(peak2_idx, len(r) - 1):
+#            if y_smooth[j] < y_smooth[j+1]:
+#                min2_idx = j
+#                break
+#        if min2_idx == len(r) - 1 or peak2_idx == len(r) - 1:
+#            min_2 = 0.0
+#            cn_2 = 0.0
+#        else:
+#            min_2 = r[min2_idx]
+#            cn_2 = rdf.n_r[min2_idx]
+#        
+#        # ---- 3rd maximum (global max after min2) ----
+#        if min2_idx >= len(r) - 1:
+#            max_3 = 0.0
+#            peak3_idx = len(r) - 1
+#        else:
+#            search_range2 = slice(min2_idx, len(r))
+#            if np.sum(y_smooth[search_range2]) == 0:
+#                max_3 = 0.0
+#                peak3_idx = len(r) - 1
+#            else:
+#                peak3_idx = min2_idx + np.argmax(y_smooth[search_range2])
+#                max_3 = r[peak3_idx]
+#        
+#        # ---- 3rd minimum ----
+#        min3_idx = len(r) - 1
+#        for j in range(peak3_idx, len(r) - 1):
+#            if y_smooth[j] < y_smooth[j+1]:
+#                min3_idx = j
+#                break
+#        if min3_idx == len(r) - 1 or peak3_idx == len(r) - 1:
+#            min_3 = 0.0
+#            cn_3 = 0.0
+#        else:
+#            min_3 = r[min3_idx]
+#            cn_3 = rdf.n_r[min3_idx]
+#        
+#        # ---- Debug plots ----
+#        if debug_mode and target_dir is not None:
+#            import matplotlib.pyplot as plt
+#            import pandas as pd
+#            
+#            debug_txt_path = os.path.join(target_dir, f"{job.id}_debug_rdf.txt")
+#            df = pd.DataFrame({"r_nm": r, "rdf": y, "rdf_smooth": y_smooth, "cn": rdf.n_r})
+#            df.to_csv(debug_txt_path, index=False, sep='\t')
+#            
+#            debug_plot_path_rdf = os.path.join(target_dir, f"{job.id}_debug_rdf.png")
+#            fig, ax = plt.subplots(figsize=(8, 6))
+#            ax.set_xlabel('Distance r (nm)')
+#            ax.set_ylabel('RDF g(r)')
+#            ax.plot(r, y, color='tab:blue', alpha=0.5, label='Raw RDF')
+#            ax.plot(r, y_smooth, color='tab:red', label='Smoothed RDF')
+#            # Mark minima and maxima
+#            ax.axvline(x=min_1, color='r', linestyle='--', label=f'min 1 ({min_1:.3f} nm)')
+#            ax.axvline(x=max_1, color='orange', linestyle=':', label=f'max 1 ({max_1:.3f} nm)')
+#            if min_2 > 0.0:
+#                ax.axvline(x=min_2, color='g', linestyle='--', label=f'min 2 ({min_2:.3f} nm)')
+#            if max_2 > 0.0:
+#                ax.axvline(x=max_2, color='purple', linestyle=':', label=f'max 2 ({max_2:.3f} nm)')
+#            if min_3 > 0.0:
+#                ax.axvline(x=min_3, color='brown', linestyle='--', label=f'min 3 ({min_3:.3f} nm)')
+#            if max_3 > 0.0:
+#                ax.axvline(x=max_3, color='cyan', linestyle=':', label=f'max 3 ({max_3:.3f} nm)')
+#            ax.legend()
+#            fig.tight_layout()
+#            plt.savefig(debug_plot_path_rdf, dpi=300)
+#            plt.close(fig)
+#            
+#            debug_plot_path_cn = os.path.join(target_dir, f"{job.id}_debug_cn.png")
+#            fig, ax = plt.subplots(figsize=(8, 6))
+#            ax.set_xlabel('Distance r (nm)')
+#            ax.set_ylabel('Coordination Number')
+#            ax.plot(r, rdf.n_r, color='tab:green', label='CN')
+#            ax.axvline(x=min_1, color='r', linestyle='--', label=f'CN 1: {cn_1:.2f}')
+#            if min_2 > 0.0:
+#                ax.axvline(x=min_2, color='g', linestyle='--', label=f'CN 2: {cn_2:.2f}')
+#            if min_3 > 0.0:
+#                ax.axvline(x=min_3, color='brown', linestyle='--', label=f'CN 3: {cn_3:.2f}')
+#            # Set y‑limit based on the largest CN found
+#            max_cn = max(cn_1, cn_2, cn_3)
+#            if max_cn > 0:
+#                ax.set_ylim(0, max_cn * 1.5)
+#            ax.legend()
+#            fig.tight_layout()
+#            plt.savefig(debug_plot_path_cn, dpi=300)
+#            plt.close(fig)
+#            
+#        return min_1, max_1, cn_1, min_2, max_2, cn_2, min_3, max_3, cn_3
