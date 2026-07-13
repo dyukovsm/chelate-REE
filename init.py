@@ -11,10 +11,10 @@ local_eleLam_ljLam_to_initLam = names.eleLam_ljLam_to_initLam
 lambda_ELE = sorted({ele for ele, lj in local_eleLam_ljLam_to_initLam})
 lambda_LJ  = sorted({lj for ele, lj in local_eleLam_ljLam_to_initLam})
 # metal = ['La','Ce','Pr','Nd','Sm','Eu','Gd','Tb','Dy','Er','Tm','Lu','Al','Fe','Ca'] # to test
-metal = ['La','Ce','Nd','Eu','Dy','Al','Fe']
+metal = ['La','Ce','Pr','Nd','Sm','Eu','Gd','Tb','Dy','Er','Tm','Lu','Al','Fe']
 polypeptide = ['DUM3+'] #['LBT5-','LBT3-','DUM3+']
 replicate = [0] # , 1, 2]
-unNested_usesTemplates = True # True
+unNested_usesTemplates = False # True
 
 
 total_statepoints = list()

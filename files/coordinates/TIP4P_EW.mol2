@@ -1,0 +1,19 @@
+@<TRIPOS>MOLECULE
+TIP4PEW
+4 3 1 0 0
+SMALL
+USER_CHARGES
+
+@<TRIPOS>ATOM
+   1 O     0.000000    0.000000    0.000000   O     1 WAT     0.000000
+   2 H1    0.756973    0.000000    0.585900   H     1 WAT     0.524220
+   3 H2   -0.756973    0.000000    0.585900   H     1 WAT     0.524220
+   4 M     0.000000    0.000000    0.125000   M     1 WAT    -1.048440
+
+@<TRIPOS>BOND
+   1    1    2    1
+   2    1    3    1
+   3    1    4    1
+
+@<TRIPOS>SUBSTRUCTURE
+   1 WAT         1 TEMP              0 ****  ****    0 ROOT
