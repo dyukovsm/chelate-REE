@@ -266,3 +266,22 @@ def aggregated_data_present(*jobs):
                     if group_name in f.read():
                         test_passed = True
     return test_passed
+
+@FlowProject.label
+def rdf_calculated(job):
+    group_parts = [str(job.sp.metal)]
+    if getattr(job.sp, 'polypeptide', None):
+        group_parts.append(str(job.sp.polypeptide))
+    group_parts.append(str(job.sp.replicate))
+    group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_name = "_".join(group_parts)
+    target_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
+    output_file = os.path.join(target_dir, "rdf_analysis.txt")
+    
+    if not os.path.exists(output_file):
+        return False
+    with open(output_file, 'r') as f:
+        contents = f.read()
+        if job.id in contents:
+            return True
+    return False

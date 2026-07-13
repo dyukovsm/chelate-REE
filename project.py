@@ -123,7 +123,7 @@ def build_input(job):
 
         # Load small molecules via RDKit
         water_rd = Chem.MolFromMol2File(
-            f'{names.PROJECT_DIR}/files/coordinates/TIP3P.mol2', removeHs=False
+            f'{names.PROJECT_DIR}/files/coordinates/TIP4P_EW_No_M.mol2', removeHs=False
         )
         water_mol = Molecule.from_rdkit(water_rd)
 
@@ -239,8 +239,8 @@ def build_input(job):
 
         ff = ForceField(
             'ff14sb_off_impropers_0.0.4.offxml',   # protein residue typing + library charges
-            f'{names.PROJECT_DIR}/files/xml/tip3p.offxml',                          # water
-            f'{names.PROJECT_DIR}/files/xml/custom_ree.offxml'  # REE ions (including TB in peptide)
+            f'{names.PROJECT_DIR}/files/xml/water/tip4p_ew.offxml',                          # water
+            f'{names.PROJECT_DIR}/files/xml/ions/custom_ree_tip4p_ew.offxml'  # REE ions (including TB in peptide)
         )
 
         interchange = ff.create_interchange(topology)
@@ -604,6 +604,80 @@ def AGGREGATE_FREE_ENERGY(*jobs):
     with open(output_file, 'a') as f:
         f.write(f"{group_name}: {mbar_val} +/- {mbar_err}\n")
 
+#DeepSeek RDF analysis V3
+@FlowProject.pre(job_tester.pro_canon_post)
+@FlowProject.post(job_tester.rdf_calculated)
+@FlowProject.operation(
+    directives={"np": ANA_CORES, "ngpu": 0, "memory": ANA_MEM, "walltime": MIN_HOURS}
+)
+def CALCULATE_RDF(job, debug_mode=True):
+    group_parts = [str(job.sp.metal)]
+    if getattr(job.sp, 'polypeptide', None):
+        group_parts.append(str(job.sp.polypeptide))
+    group_parts.append(str(job.sp.replicate))
+    group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_name = "_".join(group_parts)
+    target_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
+    os.makedirs(target_dir, exist_ok=True)
+    output_file = os.path.join(target_dir, "rdf_analysis.txt")
+    
+    result = misc_funct.calculate_rdf_freud(job, debug_mode=debug_mode, target_dir=target_dir)
+    if result[0] is not None:
+        min_1, max_1, cn_1, min_2, max_2, cn_2, min_3, max_3, cn_3 = result
+        sp_str = f"{job.sp.metal}_{job.sp.polypeptide}_{job.sp.replicate} {job.sp.lambda_ELE:>6.4f} {job.sp.lambda_LJ:>6.4f}"
+        with open(output_file, 'a') as f:
+            # Write all three shells: min, max, CN per shell
+            f.write(f"{job.id}, {min_1:.4f}, {max_1:.4f}, {cn_1:.4f}, "
+                    f"{min_2:.4f}, {max_2:.4f}, {cn_2:.4f}, "
+                    f"{min_3:.4f}, {max_3:.4f}, {cn_3:.4f}, {sp_str}\n")
+        
+        # ---- Summary file for lambda (0,0) with nice formatting ----
+        if job.sp.lambda_ELE == 0.0 and job.sp.lambda_LJ == 0.0:
+            summary_path = os.path.join(names.PROJECT_DIR, "lambda_0_0_rdf_summary.txt")
+            
+            # Column widths (increase as needed)
+            col_widths = {
+                'job_id': 34,
+                'metal': 6,
+                'min_1': 10,
+                'max_1': 10,
+                'cn_1': 10,
+                'min_2': 10,
+                'max_2': 10,
+                'cn_2': 10,
+                'min_3': 10,
+                'max_3': 10,
+                'cn_3': 10,
+            }
+            
+            if not os.path.exists(summary_path):
+                with open(summary_path, 'w') as sf:
+                    header = (f"{'job_id':<{col_widths['job_id']}} "
+                              f"{'metal':<{col_widths['metal']}} "
+                              f"{'min_1':<{col_widths['min_1']}} "
+                              f"{'max_1':<{col_widths['max_1']}} "
+                              f"{'cn_1':<{col_widths['cn_1']}} "
+                              f"{'min_2':<{col_widths['min_2']}} "
+                              f"{'max_2':<{col_widths['max_2']}} "
+                              f"{'cn_2':<{col_widths['cn_2']}} "
+                              f"{'min_3':<{col_widths['min_3']}} "
+                              f"{'max_3':<{col_widths['max_3']}} "
+                              f"{'cn_3':<{col_widths['cn_3']}}")
+                    sf.write(header + "\n")
+            
+            with open(summary_path, 'a') as sf:
+                row = (f"{job.id:<{col_widths['job_id']}} "
+                       f"{job.sp.metal:<{col_widths['metal']}} "
+                       f"{min_1:<{col_widths['min_1']}.4f} "
+                       f"{max_1:<{col_widths['max_1']}.4f} "
+                       f"{cn_1:<{col_widths['cn_1']}.4f} "
+                       f"{min_2:<{col_widths['min_2']}.4f} "
+                       f"{max_2:<{col_widths['max_2']}.4f} "
+                       f"{cn_2:<{col_widths['cn_2']}.4f} "
+                       f"{min_3:<{col_widths['min_3']}.4f} "
+                       f"{max_3:<{col_widths['max_3']}.4f} "
+                       f"{cn_3:<{col_widths['cn_3']}.4f}")
+                sf.write(row + "\n")
 
 if __name__ == '__main__':
     FlowProject().main()
