@@ -58,6 +58,7 @@ sc-coul                  = yes
 sc-alpha                 = 0.5
 
 ; init_lambda_state      = {{lambda_index}}
+bonded-lambdas           = {{bonded_lambdas}}
 coul-lambdas             = {{coul_lambdas}}
 vdw-lambdas              = {{vdw_lambdas}}
 

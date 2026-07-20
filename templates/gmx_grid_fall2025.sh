@@ -41,7 +41,7 @@ date
 
 source ~/.bashrc
 #module load python/3.10
-mamba activate grid_off
+mamba activate gmxenv
 
 
 

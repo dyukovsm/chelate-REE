@@ -49,7 +49,7 @@ from files.python_files.job_tester import (
 )
 
 # Cores configuration
-BUILD_CORES = int(8)
+BUILD_CORES = int(1)
 SIM_CORES = int(4)
 ANA_CORES = int(2)
 
@@ -70,7 +70,7 @@ project = signac.get_project()
 
 class Custom_environment(DefaultSlurmEnvironment):
     hostname_pattern = r".*\.grid\.wayne\.edu"
-    template = "gmx_grid_fall2025.sh"
+    template = 'gmx_grid_fall2025.sh' # "gmx_grid_fall2025.sh"
 
 
 @FlowProject.post(init_written)
@@ -267,16 +267,28 @@ def build_input(job):
                 with open(gro_file, 'w') as f:
                     f.write(content)
 
+        if 'LBT3-' in job.sp.polypeptide:
+            load_addendum = f'{names.PROJECT_DIR}/files/addendums/appendFEP_chelate_init_LBT3-.top'
+            # Backup init.top as original_init.top
+            shutil.copy2('init.top', 'original_init.top')
+            # Append the addendum to init.top
+            with open(load_addendum, 'r') as addendum_file:
+                addendum_content = addendum_file.read()
+            with open('init.top', 'a') as init_top_file:
+                init_top_file.write('\n')
+                init_top_file.write(addendum_content)
+
     local_eleLam_ljLam_to_initLam = names.eleLam_ljLam_to_initLam
-    current_lambda = local_eleLam_ljLam_to_initLam[round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
+    current_lambda = local_eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
     sorted_lambda_states = sorted(
     local_eleLam_ljLam_to_initLam.items(),
     key=lambda x: x[1]
     )
 
-    lambda_index = " ".join(f"{idx:>6}"      for (ele_lj, idx) in sorted_lambda_states)
-    coul_lambdas = " ".join(f"{ele:>6.3f}"   for (ele, lj), idx in sorted_lambda_states)
-    vdw_lambdas  = " ".join(f"{lj:>6.3f}"    for (ele, lj), idx in sorted_lambda_states)
+    lambda_index = " ".join(f"{idx:>6}"      for (bonded_ele_lj, idx) in sorted_lambda_states)
+    bonded_lambdas = " ".join(f"{bonded:>6.3f}" for (bonded, ele, lj), idx in sorted_lambda_states)
+    coul_lambdas = " ".join(f"{ele:>6.3f}"   for (bonded, ele, lj), idx in sorted_lambda_states)
+    vdw_lambdas  = " ".join(f"{lj:>6.3f}"    for (bonded, ele, lj), idx in sorted_lambda_states)
     
     parameters = {
         "integrator": "sd",
@@ -333,6 +345,7 @@ def build_input(job):
         "molecule_of_interest": job.sp.metal,
         "nstdhdl": int(names.NORMAL_CALC * 10),
         "lambda_index" : lambda_index,
+        "bonded_lambdas" : bonded_lambdas,
         "coul_lambdas" : coul_lambdas,
         "vdw_lambdas"  : vdw_lambdas,
     })
@@ -343,7 +356,7 @@ def build_input(job):
         parameters=parameters,
         constraints=None,
         templates_dir=f'{names.PROJECT_DIR}/files/mdp/',
-        template_name='free_energy_Canonical_mdp_template.mdp'
+        template_name='FEP_chelate_NVT_template.mdp'
     )
 
     parameters.update({
@@ -354,6 +367,7 @@ def build_input(job):
         "molecule_of_interest": job.sp.metal,
         "nstdhdl": int(names.PRO_DHDL),
         "lambda_index" : lambda_index,
+        "bonded_lambdas" : bonded_lambdas,
         "coul_lambdas" : coul_lambdas,
         "vdw_lambdas"  : vdw_lambdas,
     })
@@ -364,7 +378,7 @@ def build_input(job):
         parameters=parameters,
         constraints=None,
         templates_dir=f'{names.PROJECT_DIR}/files/mdp/',
-        template_name='free_energy_Canonical_mdp_template.mdp'
+        template_name='FEP_chelate_NVT_template.mdp'
     )
 
 
@@ -425,7 +439,7 @@ def PRO_CANON(job):
 @FlowProject.post(free_energy_bar_copied)
 @FlowProject.operation(directives={"np": int(1), "ngpu": 0, "memory": SIM_MEM, "walltime": MIN_HOURS}, with_job=True, cmd=True)
 def FREE_ENERGY_FILES_RENAMED(job):
-    current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
+    current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
     run_command = str(f'cp {names.NAME_PRO_CANON}.xvg {names.NAME_PRO_CANON}_{current_lambda}.xvg')
     return run_command
 
@@ -588,8 +602,8 @@ def AGGREGATE_FREE_ENERGY(*jobs):
     os.makedirs(target_dir, exist_ok=True)
     
     for job in jobs:
-        current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
-        
+        current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
+
         xvg_src = job.fn(f'{names.NAME_PRO_CANON}_{current_lambda}.xvg')
         mdp_src = job.fn(f'{names.NAME_PRO_CANON}.mdp')
         

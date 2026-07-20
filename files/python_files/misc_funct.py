@@ -508,11 +508,14 @@ def calculate_free_energy(target_dir):
                 os.environ["JAX_PLATFORMS"] = orig_jax_plat
 
 #DeepSeek RDF analysis V4
-import numpy as np
-import mdtraj as md
-import freud
-from scipy.ndimage import gaussian_filter1d
-from scipy.optimize import curve_fit   # for Gaussian fitting
+try :
+    import numpy as np
+    import mdtraj as md
+    import freud
+    from scipy.ndimage import gaussian_filter1d
+    from scipy.optimize import curve_fit   # for Gaussian fitting
+except :
+    print("Required libraries for RDF not found; analysis that relies on these libraries will not work.")
 
 # Constant for shell onset definition
 N_SIGMA = 3.0

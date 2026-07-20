@@ -217,7 +217,7 @@ def free_energy_bar_copied(job):
     with job:
         test_passed = False
         if job.isfile(f'{names.NAME_PRO_CANON}.xvg'):
-            current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
+            current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
             if job.isfile(f'{names.NAME_PRO_CANON}_{current_lambda}.xvg'):
                 test_passed = True
     return test_passed
@@ -239,7 +239,7 @@ def xvg_present_for_all(*jobs):
     for job in jobs:
         with job:
             if job.isfile(f'{names.NAME_PRO_CANON}.xvg'):
-                current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
+                current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
                 if not job.isfile(f'{names.NAME_PRO_CANON}_{current_lambda}.xvg'):
                     test_passed = False
                     break

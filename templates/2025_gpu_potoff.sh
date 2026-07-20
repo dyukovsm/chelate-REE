@@ -20,7 +20,7 @@
 #SBATCH -N 1
 #SBATCH --ntasks-per-core=1
 ##SBATCH --nodelist=res-lab42-ai8111 
-#SBATCH --exclude=ressrv8ai8111,ressrv10ai8111,res-lab34-ai8111,res-lab33-ai8111
+##SBATCH --exclude=ressrv8ai8111,ressrv10ai8111,res-lab34-ai8111,res-lab33-ai8111
 echo  "Running on host" $HOSTNAME
 echo  "Time is" date
 source /home6/go0719/.bashrc
