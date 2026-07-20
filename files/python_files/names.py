@@ -69,12 +69,12 @@ SMALL_EQ_STEPS      =int(1000000)# int(1000000)
 # MID_EQ_STEPS renamed to follow SIM core naming standard
 MID_EQ_STEPS        = int(500000)
 LONG_EQ_STEPS       = int(2000000) # for restraints used 10000000
-SLOW_OUTPUT         = int(1000) # for restraints used 1000
+SLOW_OUTPUT         = int(10000) # for restraints used 1000
 NORMAL_CALC         = int(100)
 
 PRO_STEPS             = int(500000)# int(500000)
 PRO_FREE_ENERGY_STEPS = int(500000)# int(500000)
-FAST_OUTPUT           = int(1000) # 2000
+FAST_OUTPUT           = int(10000) # 2000
 PRO_DHDL              = int(200)
 FAST_CALC             = int(100)
 

@@ -269,6 +269,11 @@ def build_input(job):
 
         if 'LBT3-' in job.sp.polypeptide:
             load_addendum = f'{names.PROJECT_DIR}/files/addendums/appendFEP_chelate_init_LBT3-.top'
+        elif 'LBT5-' in job.sp.polypeptide:
+            load_addendum = f'{names.PROJECT_DIR}/files/addendums/appendFEP_chelate_init_LBT5-.top'
+
+
+        if 'LBT3-' in job.sp.polypeptide or 'LBT5-' in job.sp.polypeptide:
             # Backup init.top as original_init.top
             shutil.copy2('init.top', 'original_init.top')
             # Append the addendum to init.top
