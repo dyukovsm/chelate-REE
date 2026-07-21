@@ -75,7 +75,7 @@ NORMAL_CALC         = int(100)
 PRO_STEPS             = int(100000)# int(500000)
 PRO_FREE_ENERGY_STEPS = int(2500000)# int(500000)
 FAST_OUTPUT           = int(5000) # 2000
-PRO_DHDL              = int(200)
+PRO_DHDL              = int(1000)
 FAST_CALC             = int(100)
 
 # Cut-off radius in nm
