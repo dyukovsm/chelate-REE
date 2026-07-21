@@ -238,7 +238,8 @@ def build_input(job):
         )
 
         ff = ForceField(
-            'ff14sb_off_impropers_0.0.4.offxml',   # protein residue typing + library charges
+            #'ff14sb_off_impropers_0.0.4.offxml',   # protein residue typing + library charges
+            f'{names.PROJECT_DIR}/files/xml/polypep/ff14sb_off_impropers_0.0.4.offxml',
             f'{names.PROJECT_DIR}/files/xml/water/tip4p_ew.offxml',                          # water
             f'{names.PROJECT_DIR}/files/xml/ions/custom_ree_tip4p_ew.offxml'  # REE ions (including TB in peptide)
         )

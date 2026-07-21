@@ -65,16 +65,16 @@ METAL_FORMAL_CHARGES = {
 }
 
 # GROMACS MD steps and output controls
-SMALL_EQ_STEPS      =int(1000000)# int(1000000)
+SMALL_EQ_STEPS      =int(100000)# int(1000000)
 # MID_EQ_STEPS renamed to follow SIM core naming standard
-MID_EQ_STEPS        = int(500000)
-LONG_EQ_STEPS       = int(2000000) # for restraints used 10000000
+MID_EQ_STEPS        = int(100000)
+LONG_EQ_STEPS       = int(500000) # for restraints used 10000000
 SLOW_OUTPUT         = int(10000) # for restraints used 1000
 NORMAL_CALC         = int(100)
 
-PRO_STEPS             = int(500000)# int(500000)
-PRO_FREE_ENERGY_STEPS = int(500000)# int(500000)
-FAST_OUTPUT           = int(10000) # 2000
+PRO_STEPS             = int(100000)# int(500000)
+PRO_FREE_ENERGY_STEPS = int(2500000)# int(500000)
+FAST_OUTPUT           = int(5000) # 2000
 PRO_DHDL              = int(200)
 FAST_CALC             = int(100)
 
@@ -155,16 +155,20 @@ eleLam_ljLam_to_initLam = {
     (1.000,	0.450,	0.000): 17,
     (1.000,	0.500,	0.000): 18,
     (1.000,	0.550,	0.000): 19,
-    (1.000,	0.650,	0.000): 20,
-    (1.000,	0.750,	0.000): 21,
-    (1.000,	0.800,	0.000): 22,
-    (1.000,	0.900,	0.000): 23,
-    (1.000,	1.000,	0.000): 24,
-    (1.000,	1.000,	0.300): 25,
-    (1.000,	1.000,	0.600): 26,
-    (1.000,	1.000,	0.750): 27,
-    (1.000,	1.000,	0.900): 28,
-    (1.000,	1.000,	1.000): 29
+    (1.000, 0.600,  0.000): 20,
+    (1.000,	0.650,	0.000): 21,
+    (1.000, 0.700,  0.000): 22,
+    (1.000,	0.750,	0.000): 23,
+    (1.000,	0.800,	0.000): 24,
+    (1.000, 0.835,  0.000): 25,
+    (1.000, 0.870,  0.000): 26,
+    (1.000,	0.900,	0.000): 27,
+    (1.000,	1.000,	0.000): 28,
+    (1.000,	1.000,	0.300): 29,
+    (1.000,	1.000,	0.600): 30,
+    (1.000,	1.000,	0.750): 31,
+    (1.000,	1.000,	0.900): 32,
+    (1.000,	1.000,	1.000): 33
 
 
   #Old Lambdas
