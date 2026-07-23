@@ -287,7 +287,7 @@ def build_input(job):
 
         CHARGE_MULTIPLIER = 0.9
 
-        if 'LBT5-' in job.sp. CHARGE_MULTIPLIER != 1.0:
+        if 'LBT5-' in job.sp.polypeptide and CHARGE_MULTIPLIER != 1.0:
             pairs_path = f'{names.PROJECT_DIR}/files/addendums/charges/pairs_LBT5-.txt'
             o_charges_path = f'{names.PROJECT_DIR}/files/addendums/charges/custom_charges_LBT5-_Oxygen.top'
             c_charges_path = f'{names.PROJECT_DIR}/files/addendums/charges/custom_charges_LBT5-_Carbon.top'

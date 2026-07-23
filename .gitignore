@@ -1,4 +1,4 @@
-**/workspace
+**/workspace*
 **/files/python_files/__pycache__
 **/legend.txt
 **/__pycache__
@@ -7,3 +7,4 @@
 000000_analysis/
 aggregated_free_energy.txt
 slurm-*.out
+lambda_0_0_rdf_summary.txt
