@@ -284,6 +284,96 @@ def build_input(job):
                 init_top_file.write('\n')
                 init_top_file.write(addendum_content)
 
+
+        CHARGE_MULTIPLIER = 0.9
+
+        if 'LBT5-' in job.sp. CHARGE_MULTIPLIER != 1.0:
+            pairs_path = f'{names.PROJECT_DIR}/files/addendums/charges/pairs_LBT5-.txt'
+            o_charges_path = f'{names.PROJECT_DIR}/files/addendums/charges/custom_charges_LBT5-_Oxygen.top'
+            c_charges_path = f'{names.PROJECT_DIR}/files/addendums/charges/custom_charges_LBT5-_Carbon.top'
+
+            with open(pairs_path, 'r') as f:
+                pairs_lines = f.readlines()
+            
+            with open(o_charges_path, 'r') as f:
+                o_lines = f.readlines()
+                
+            with open(c_charges_path, 'r') as f:
+                c_lines = f.readlines()
+            
+            o_data = {}
+            for line in o_lines:
+                if not line.strip(): continue
+                parts = line.split()
+                atom_id = parts[0]
+                charge = float(line.split(';')[1].split()[0])
+                o_data[atom_id] = {'line': line, 'charge': charge}
+
+            c_data = {}
+            for line in c_lines:
+                if not line.strip(): continue
+                parts = line.split()
+                atom_id = parts[0]
+                charge = float(line.split(';')[1].split()[0])
+                c_data[atom_id] = {'line': line, 'charge': charge}
+
+            pair_groups = {}
+            for line in pairs_lines:
+                if not line.strip(): continue
+                c_id, o_id = line.split()
+                if c_id not in pair_groups:
+                    pair_groups[c_id] = []
+                pair_groups[c_id].append(o_id)
+            
+            new_lines_by_prefix = {}
+            for c_id, o_ids in pair_groups.items():
+                if c_id not in c_data:
+                    continue
+                c_charge_in = c_data[c_id]['charge']
+                
+                valid_o_ids = [oid for oid in o_ids if oid in o_data]
+                if not valid_o_ids:
+                    continue
+                
+                o_charges_in = [o_data[oid]['charge'] for oid in valid_o_ids]
+                o_charges_out = [chg * CHARGE_MULTIPLIER for chg in o_charges_in]
+                
+                allC_charges_in = c_charge_in
+                all_individual_O_charge_in = sum(o_charges_in)
+                
+                all_individual_O_charge_out = sum(o_charges_out)
+                total_o_change = all_individual_O_charge_in - all_individual_O_charge_out
+                allC_charges_out = c_charge_in + total_o_change
+                
+                all_pairs_in_pairGroup = f"[{c_id}, {', '.join(valid_o_ids)}]"
+                
+                print(f'{all_pairs_in_pairGroup} {allC_charges_in}+{all_individual_O_charge_in}={allC_charges_in+all_individual_O_charge_in}={allC_charges_out}+{all_individual_O_charge_out}={allC_charges_out+all_individual_O_charge_out}')
+                
+                for i, oid in enumerate(valid_o_ids):
+                    o_line_template = o_data[oid]['line']
+                    base_str = o_line_template.split(';')[0]
+                    new_o_line = base_str.replace('{{charge}}', f"{o_charges_out[i]:.12f}").rstrip() + '\n'
+                    prefix = o_line_template[:27]
+                    new_lines_by_prefix[prefix] = new_o_line
+                    
+                c_line_template = c_data[c_id]['line']
+                base_str = c_line_template.split(';')[0]
+                new_c_line = base_str.replace('{{charge}}', f"{allC_charges_out:.12f}").rstrip() + '\n'
+                prefix = c_line_template[:27]
+                new_lines_by_prefix[prefix] = new_c_line
+            
+            with open('init.top', 'r') as f:
+                init_top_lines = f.readlines()
+                
+            for i, line in enumerate(init_top_lines):
+                prefix = line[:27]
+                if prefix in new_lines_by_prefix:
+                    init_top_lines[i] = new_lines_by_prefix[prefix]
+                    
+            with open('init.top', 'w') as f:
+                f.writelines(init_top_lines)
+
+
     local_eleLam_ljLam_to_initLam = names.eleLam_ljLam_to_initLam
     current_lambda = local_eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
     sorted_lambda_states = sorted(
