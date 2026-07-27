@@ -285,7 +285,7 @@ def build_input(job):
                 init_top_file.write(addendum_content)
 
 
-        CHARGE_MULTIPLIER = 0.9
+        CHARGE_MULTIPLIER = job.sp.charge_mult
 
         if 'LBT5-' in job.sp.polypeptide and CHARGE_MULTIPLIER != 1.0:
             pairs_path = f'{names.PROJECT_DIR}/files/addendums/charges/pairs_LBT5-.txt'
