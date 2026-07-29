@@ -16,7 +16,7 @@ metal = ['Al','La','Gd','Lu','Ca'] #['Al','Fe','Ca','La','Nd','Gd','Dy','Lu'] # 
 polypeptide = ['LBT5-'] #['LBT5-','LBT3-','DUM3+']
 replicate = [0] # , 1, 2]
 unNested_usesTemplates = False # True
-charge_mult = [0.850, 0.800, 0.775, 0.750, 0.725, 0.700]
+charge_mult = [0.775, 0.750, 0.725]
 
 
 total_statepoints = list()
