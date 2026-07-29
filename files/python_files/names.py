@@ -65,7 +65,7 @@ METAL_FORMAL_CHARGES = {
 }
 
 # GROMACS MD steps and output controls
-SMALL_EQ_STEPS      =int(100000)# int(1000000)
+SMALL_EQ_STEPS      =int(500000)# int(1000000)
 # MID_EQ_STEPS renamed to follow SIM core naming standard
 MID_EQ_STEPS        = int(100000)
 LONG_EQ_STEPS       = int(500000) # for restraints used 10000000
