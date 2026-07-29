@@ -692,7 +692,7 @@ def GRAPH_AND_COLLECT_PROPERTIES(job):
 @FlowProject.post(aggregated_data_present)
 @FlowProject.operation(
     directives={"np": ANA_CORES, "ngpu": 0, "memory": ANA_MEM, "walltime": MIN_HOURS},
-    aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.unNested_usesTemplates, job.sp.replicate))
+    aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.unNested_usesTemplates, job.sp.replicate, job.sp.charge_mult))
 )
 def AGGREGATE_FREE_ENERGY(*jobs):
     group_parts = [str(jobs[0].sp.metal)]
@@ -700,9 +700,11 @@ def AGGREGATE_FREE_ENERGY(*jobs):
         group_parts.append(str(jobs[0].sp.polypeptide))
     group_parts.append(str(jobs[0].sp.replicate))
     group_parts.append(str(jobs[0].sp.unNested_usesTemplates))
+    group_parts.append(str(jobs[0].sp.charge_mult))
     group_name = "_".join(group_parts)
     group_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)   # define group_dir
-    target_dir = os.path.join(group_dir, "HFE")
+    target_dir = os.path.join(group_dir, "GFE")
+    os.makedirs(target_dir, exist_ok=True)
     
     for job in jobs:
         current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
