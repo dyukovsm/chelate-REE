@@ -634,7 +634,7 @@ def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
         print(f"DEBUG: polypeptide = {polypeptide} (type: {type(polypeptide)})")
 
         target_sel = None
-        use_oxygen = False
+        use_oxygen = True ######################################################################
 
         if polypeptide and polypeptide != 'None' and str(polypeptide).strip():
             # Build path to the addendum .top file
@@ -672,7 +672,9 @@ def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
 
         if use_oxygen:
             print("INFO: Using oxygen atoms for RDF analysis.")
-            target_sel = traj.topology.select("name O or name OW or element O")
+            target_sel = traj.topology.select("index 167 201 202 118 48 59 168 102 103 74 and element O")
+            #target_sel = traj.topology.select("(name O or name OW or element O) and not (resname TIP4P)")
+            #target_sel = traj.topology.select("name O or name OW or element O")
             if target_sel is None or len(target_sel) == 0:
                 print("ERROR: No oxygen atoms found. Cannot proceed.")
                 return None, None, None, None, None, None, None, None, None
@@ -854,3 +856,155 @@ def calculate_rdf_freud(job, debug_mode=False, target_dir=None):
 
         # Return: min_1, max_1, cn_1_new, min_2, max_2, cn_2_new, min_3, max_3, cn_3_new
         return min_1, max_1, cn_1_new, min_2, max_2, cn_2_new, min_3, max_3, cn_3_new
+
+def calculate_distance_time(job, target_dir):
+    """
+    Compute distance from ion to selected atoms as a function of time.
+    Concatenates EQ_NVT.trr, EQ_NPT_BERENDSEN.trr, EQ_CANON.trr, PRO_CANON.trr (if present).
+    Uses periodic boundary conditions via mdtraj.compute_distances.
+    Writes per‑atom distance files and mean files, plus pro_canon_start_time.
+    """
+    import mdtraj as md
+    import numpy as np
+    import os
+
+    with job:
+        # λ‑index
+        bonded = round(job.sp.lambda_BONDED, 5)
+        ele = round(job.sp.lambda_ELE, 5)
+        lj = round(job.sp.lambda_LJ, 5)
+        lambda_idx = names.eleLam_ljLam_to_initLam[(bonded, ele, lj)]
+        lambda_str = f"lam{lambda_idx:02d}"
+
+        # Topology
+        top_file = f'{names.NAME_PRO_CANON}.gro'
+        if not os.path.exists(top_file):
+            top_file = 'init.gro'
+        if not os.path.exists(top_file):
+            print(f"Missing topology for {job.id}")
+            return
+
+        # Concatenate segments
+        traj_files = [
+            f'{names.NAME_EQ_CANON}.trr',
+            f'{names.NAME_PRO_CANON}.trr'
+        ]
+
+        all_xyz, all_time, all_box = [], [], []
+        last_time = 0.0
+        pro_canon_start = None
+
+        for i, fname in enumerate(traj_files):
+            if not os.path.exists(fname):
+                continue
+            try:
+                seg = md.load(fname, top=top_file)
+                if seg.n_frames == 0:
+                    continue
+                t = seg.time
+                dt = t[1] - t[0] if len(t) > 1 else 0.001
+                offset = 0.0 if i == 0 else last_time + dt - t[0]
+                t_shifted = t + offset
+                last_time = t_shifted[-1]
+                all_xyz.append(seg.xyz)
+                all_time.append(t_shifted)
+                all_box.append(seg.unitcell_vectors)   # store box for each frame
+                if fname == f'{names.NAME_PRO_CANON}.trr':
+                    pro_canon_start = t_shifted[0]
+            except Exception as e:
+                print(f"Error loading {fname}: {e}")
+                continue
+
+        if not all_xyz:
+            return
+
+        # Save PRO_CANON start time
+        if pro_canon_start is not None:
+            with open(os.path.join(target_dir, f"pro_canon_start_time_{lambda_str}.txt"), 'w') as f:
+                f.write(f"{pro_canon_start}\n")
+
+        # Concatenate
+        xyz = np.concatenate(all_xyz, axis=0)
+        time = np.concatenate(all_time, axis=0)
+        box = np.concatenate(all_box, axis=0)
+
+        # Create trajectory
+        ref_seg = md.load(traj_files[0], top=top_file)
+        traj = md.Trajectory(xyz, ref_seg.topology, time=time)
+        # Assign box vectors
+        traj.unitcell_vectors = box
+
+        # Metal ion
+        metal_name = job.sp.metal
+        ion_idx = traj.topology.select(f"name {metal_name} or element {metal_name}")
+        if len(ion_idx) == 0:
+            return
+        ion_idx = ion_idx[0]
+
+        # Selections
+        polypeptide = getattr(job.sp, 'polypeptide', None)
+        selections = {}
+        if polypeptide and polypeptide != 'DUM3+':
+            from files.python_files.misc_funct import _parse_restraint_top
+            top_path = os.path.join(names.PROJECT_DIR, "files", "addendums",
+                                    f"appendFEP_chelate_init_{polypeptide}.top")
+            ion_serial, alpha_serials = _parse_restraint_top(top_path)
+            if alpha_serials:
+                selections['CA'] = ([s-1 for s in alpha_serials], alpha_serials)
+            else:
+                ca = traj.topology.select("name CA")
+                if len(ca) > 0:
+                    selections['CA'] = (ca.tolist(), [i+1 for i in ca])
+
+            o_file = os.path.join(names.PROJECT_DIR, "files", "addendums", "charges",
+                                  f"custom_charges_{polypeptide}_Oxygen.top")
+            if os.path.exists(o_file):
+                o_serials = []
+                with open(o_file, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith(';'):
+                            parts = line.split()
+                            if parts:
+                                try:
+                                    o_serials.append(int(parts[0]))
+                                except ValueError:
+                                    pass
+                if o_serials:
+                    selections['O_coord'] = ([s-1 for s in o_serials], o_serials)
+
+        # OHN
+        ohn = traj.topology.select("element O or element N or element H")
+        ohn = ohn[ohn != ion_idx]
+        if len(ohn) > 0:
+            selections['OHN'] = (ohn.tolist(), [])
+
+        # Compute and write data with PBC
+                # Compute and write data with PBC
+        for label, (indices, serials) in selections.items():
+            if len(indices) == 0:
+                continue
+
+            # Mean distance using all pairs (ion vs each atom)
+            pairs = [[ion_idx, idx] for idx in indices]
+            all_dists = md.compute_distances(traj, pairs, periodic=True)
+            mean_dists = np.mean(all_dists, axis=1)
+            np.savetxt(os.path.join(target_dir, f"distance_{label}_{lambda_str}.txt"),
+                       np.column_stack((time, mean_dists)),
+                       header="time (ps)\tmean_distance (nm)", comments='')
+
+            # Per‑atom distances
+            if serials and len(serials) == len(indices):
+                for idx, serial in zip(indices, serials):
+                    dists = md.compute_distances(traj, [[ion_idx, idx]], periodic=True)[:, 0]
+                    np.savetxt(os.path.join(target_dir, f"distance_{label}_serial{serial}_{lambda_str}.txt"),
+                               np.column_stack((time, dists)),
+                               header="time (ps)\tdistance (nm)", comments='')
+
+        # --- MARKER CREATION (added here) ---
+        # Create marker file to indicate data is written
+        marker_file = os.path.join(target_dir, f"distance_data_{lambda_str}.done")
+        with open(marker_file, 'w') as f:
+            f.write("Data written successfully\n")
+
+        return

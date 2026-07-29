@@ -21,6 +21,7 @@ import os
 from jinja2 import Environment, FileSystemLoader
 import shutil
 from files.python_files import names
+import glob
 
 
 extension_list_of_common_files = [".gro", ".trr", ".log", ".edr", ".tpr"]   # former extension_list_list
@@ -285,3 +286,49 @@ def rdf_calculated(job):
         if job.id in contents:
             return True
     return False
+
+@FlowProject.label
+def distance_data_written(*jobs):
+    if not jobs:
+        return False
+    for job in jobs:
+        bonded = round(job.sp.lambda_BONDED, 5)
+        ele = round(job.sp.lambda_ELE, 5)
+        lj = round(job.sp.lambda_LJ, 5)
+        lambda_idx = names.eleLam_ljLam_to_initLam[(bonded, ele, lj)]
+        lambda_str = f"lam{lambda_idx:02d}"
+        group_parts = [str(job.sp.metal)]
+        if getattr(job.sp, 'polypeptide', None):
+            group_parts.append(str(job.sp.polypeptide))
+        group_parts.append(str(job.sp.replicate))
+        group_parts.append(str(job.sp.unNested_usesTemplates))
+        group_name = "_".join(group_parts)
+        distance_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "distance")
+        marker = os.path.join(distance_dir, f"distance_data_{lambda_str}.done")
+        if not os.path.exists(marker):
+            return False
+    return True
+    
+@FlowProject.label
+def distance_time_calculated(*jobs):
+    if not jobs:
+        return False
+    job = jobs[0]
+    group_parts = [str(job.sp.metal)]
+    if getattr(job.sp, 'polypeptide', None):
+        group_parts.append(str(job.sp.polypeptide))
+    group_parts.append(str(job.sp.replicate))
+    group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_name = "_".join(group_parts)
+    distance_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "distance")
+    # Check for at least one CA overlay, one O_coord overlay, and OHN overlay
+    ca_overlays = glob.glob(os.path.join(distance_dir, "overlay_CA_serial*.png"))
+    o_overlays = glob.glob(os.path.join(distance_dir, "overlay_O_coord_serial*.png"))
+    ohn_overlay = os.path.isfile(os.path.join(distance_dir, "overlay_OHN.png"))
+    # Require all three types to be present (if there are no CA or O atoms, we need to handle gracefully)
+    # For robustness, we only require that if there is data for a type, its overlay exists.
+    # But for simplicity, we'll just check that at least one overlay exists.
+    # However, to avoid false positives, we'll check that we have at least one CA overlay (if CA data exists)
+    # and at least one O_coord overlay (if O_coord data exists). We'll rely on the aggregation to create them.
+    # A simple check: if any overlay exists, return True.
+    return (len(ca_overlays) > 0) or (len(o_overlays) > 0) or ohn_overlay

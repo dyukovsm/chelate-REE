@@ -30,8 +30,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import io
 
-from files.python_files import names
-from files.python_files import misc_funct
+from files.python_files import names, misc_funct
+from files.python_files.misc_funct import (
+    simple_mdp_writer,
+    calculate_free_energy,
+    calculate_rdf_freud,
+    calculate_distance_time
+)
 from files.python_files.job_tester import (
     init_written,
     mdp_written,
@@ -45,7 +50,9 @@ from files.python_files.job_tester import (
     free_energy_bar_copied,
     data_collected,
     xvg_present_for_all,
-    aggregated_data_present
+    aggregated_data_present,
+    distance_time_calculated,
+    distance_data_written,
 )
 
 # Cores configuration
@@ -285,7 +292,7 @@ def build_input(job):
                 init_top_file.write(addendum_content)
 
 
-        CHARGE_MULTIPLIER = job.sp.charge_mult
+        CHARGE_MULTIPLIER = 0.9
 
         if 'LBT5-' in job.sp.polypeptide and CHARGE_MULTIPLIER != 1.0:
             pairs_path = f'{names.PROJECT_DIR}/files/addendums/charges/pairs_LBT5-.txt'
@@ -694,8 +701,8 @@ def AGGREGATE_FREE_ENERGY(*jobs):
     group_parts.append(str(jobs[0].sp.replicate))
     group_parts.append(str(jobs[0].sp.unNested_usesTemplates))
     group_name = "_".join(group_parts)
-    target_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
-    os.makedirs(target_dir, exist_ok=True)
+    group_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)   # define group_dir
+    target_dir = os.path.join(group_dir, "HFE")
     
     for job in jobs:
         current_lambda = names.eleLam_ljLam_to_initLam[round(job.sp.lambda_BONDED, 5), round(job.sp.lambda_ELE, 5), round(job.sp.lambda_LJ, 5)]
@@ -788,6 +795,194 @@ def CALCULATE_RDF(job, debug_mode=True):
                        f"{max_3:<{col_widths['max_3']}.4f} "
                        f"{cn_3:<{col_widths['cn_3']}.4f}")
                 sf.write(row + "\n")
+
+@FlowProject.pre(pro_canon_post)
+@FlowProject.post(distance_data_written)
+@FlowProject.operation(directives={"np": ANA_CORES, "ngpu": 0, "memory": ANA_MEM, "walltime": MIN_HOURS})
+def CALCULATE_DISTANCE_TIME(job):
+    group_parts = [str(job.sp.metal)]
+    if getattr(job.sp, 'polypeptide', None):
+        group_parts.append(str(job.sp.polypeptide))
+    group_parts.append(str(job.sp.replicate))
+    group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_name = "_".join(group_parts)
+    group_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
+    target_dir = os.path.join(group_dir, "distance")
+    os.makedirs(target_dir, exist_ok=True)
+    calculate_distance_time(job, target_dir)
+
+
+@FlowProject.pre(distance_data_written)
+@FlowProject.post(distance_time_calculated)
+@FlowProject.operation(
+    directives={"np": ANA_CORES, "ngpu": 0, "memory": ANA_MEM, "walltime": MIN_HOURS},
+    aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.replicate, job.sp.unNested_usesTemplates))
+)
+def AGGREGATE_DISTANCE_TIME(*jobs):
+    import glob
+    import re
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import Normalize
+    from matplotlib.cm import ScalarMappable
+
+    first_job = jobs[0]
+    group_parts = [
+        str(first_job.sp.metal),
+        str(first_job.sp.polypeptide) if getattr(first_job.sp, 'polypeptide', None) else 'None',
+        str(first_job.sp.replicate),
+        str(first_job.sp.unNested_usesTemplates)
+    ]
+    group_name = "_".join(group_parts)
+    distance_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "distance")
+    os.makedirs(distance_dir, exist_ok=True)
+
+    print(f"Processing group: {group_name}")
+
+    def read_distance_file(fpath):
+        try:
+            df = pd.read_csv(fpath, sep=r'\s+', header=None, skiprows=1,
+                             names=['time', 'dist'])
+            if len(df) < 2:
+                return None, None
+            time = df['time'].astype(float).values
+            dist = df['dist'].astype(float).values
+            return time, dist
+        except Exception as e:
+            print(f"  Error reading {fpath}: {e}")
+            return None, None
+
+    # Collect per‑atom data (CA and O_coord)
+    atom_files = glob.glob(os.path.join(distance_dir, "distance_*_serial*_lam*.txt"))
+    print(f"Found {len(atom_files)} per‑atom data files")
+    atom_data = {}
+
+    for fpath in atom_files:
+        base = os.path.basename(fpath)
+        parts = base.split('_')
+        # label is everything between 'distance' and 'serial'
+        label = '_'.join(parts[1:-2])   # e.g., 'CA' or 'O_coord'
+        serial = None
+        lambda_idx = None
+        for part in parts:
+            if part.startswith('serial'):
+                serial = int(part.replace('serial', ''))
+            elif part.startswith('lam'):
+                m = re.search(r'lam(\d+)', part)
+                if m:
+                    lambda_idx = int(m.group(1))
+        if label is None or serial is None or lambda_idx is None:
+            print(f"  Skipping file {base}: could not parse label/serial/lambda")
+            continue
+        time, dist = read_distance_file(fpath)
+        if time is None:
+            continue
+        atom_data.setdefault((label, serial), []).append((lambda_idx, time, dist))
+        print(f"  Added {label} serial {serial} lambda {lambda_idx}")
+
+    print(f"Collected {len(atom_data)} atom types/serials with data")
+
+    # Collect OHN mean data
+    ohn_files = glob.glob(os.path.join(distance_dir, "distance_OHN_lam*.txt"))
+    print(f"Found {len(ohn_files)} OHN data files")
+    ohn_data = []
+    for fpath in ohn_files:
+        base = os.path.basename(fpath)
+        parts = base.split('_')
+        lambda_idx = None
+        for part in parts:
+            if part.startswith('lam'):
+                m = re.search(r'lam(\d+)', part)
+                if m:
+                    lambda_idx = int(m.group(1))
+        if lambda_idx is None:
+            continue
+        time, dist = read_distance_file(fpath)
+        if time is None:
+            continue
+        ohn_data.append((lambda_idx, time, dist))
+        print(f"  Added OHN lambda {lambda_idx}")
+
+    print(f"Collected {len(ohn_data)} OHN lambdas with data")
+
+    if not atom_data and not ohn_data:
+        print(f"WARNING: No data found for group {group_name}. No plots created.")
+        return
+
+    plots_created = False
+    if atom_data:
+        cmap = plt.get_cmap('plasma')
+        for (label, serial), data_list in atom_data.items():
+            data_list.sort(key=lambda x: x[0])
+            lambdas = [d[0] for d in data_list]
+            norm = Normalize(vmin=min(lambdas), vmax=max(lambdas))
+            fig, ax = plt.subplots(figsize=(10, 6))
+            for lambda_idx, time, dist in data_list:
+                ax.plot(time, dist, color=cmap(norm(lambda_idx)), linewidth=1.5, alpha=0.8)
+
+            first_lambda_str = f"lam{data_list[0][0]:02d}"
+            start_file = os.path.join(distance_dir, f"pro_canon_start_time_{first_lambda_str}.txt")
+            if os.path.exists(start_file):
+                with open(start_file, 'r') as f:
+                    start_time = float(f.read().strip())
+                ax.axvline(x=start_time, color='black', linestyle='--', linewidth=2, label='PRO_CANON start')
+
+            sm = ScalarMappable(norm=norm, cmap=cmap)
+            sm.set_array([])
+            cbar = plt.colorbar(sm, ax=ax)
+            cbar.set_label('λ-index')
+            ax.set_xlabel('Time (ps)')
+            ax.set_ylabel('Distance (nm)')
+            ax.set_title(f'{group_name} – {label} serial {serial}')
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            out_file = os.path.join(distance_dir, f"overlay_{label}_serial{serial}.png")
+            plt.savefig(out_file, dpi=300, bbox_inches='tight')
+            plt.close(fig)
+            print(f"Overlay saved: {out_file}")
+            plots_created = True
+
+    if ohn_data:
+        ohn_data.sort(key=lambda x: x[0])
+        lambdas = [d[0] for d in ohn_data]
+        norm = Normalize(vmin=min(lambdas), vmax=max(lambdas))
+        fig, ax = plt.subplots(figsize=(10, 6))
+        for lambda_idx, time, dist in ohn_data:
+            ax.plot(time, dist, color=cmap(norm(lambda_idx)), linewidth=1.5, alpha=0.8)
+
+        first_lambda_str = f"lam{ohn_data[0][0]:02d}"
+        start_file = os.path.join(distance_dir, f"pro_canon_start_time_{first_lambda_str}.txt")
+        if os.path.exists(start_file):
+            with open(start_file, 'r') as f:
+                start_time = float(f.read().strip())
+            ax.axvline(x=start_time, color='black', linestyle='--', linewidth=2, label='PRO_CANON start')
+
+        sm = ScalarMappable(norm=norm, cmap=cmap)
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax)
+        cbar.set_label('λ-index')
+        ax.set_xlabel('Time (ps)')
+        ax.set_ylabel('Mean Distance (nm)')
+        ax.set_title(f'{group_name} – OHN (mean distance)')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        out_file = os.path.join(distance_dir, "overlay_OHN.png")
+        plt.savefig(out_file, dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        print(f"Overlay saved: {out_file}")
+        plots_created = True
+
+    if plots_created:
+        print("Cleaning up .txt files...")
+        for f in glob.glob(os.path.join(distance_dir, "*.txt")):
+            try:
+                os.remove(f)
+                print(f"  Removed {f}")
+            except Exception as e:
+                print(f"  Could not remove {f}: {e}")
+        print("Cleanup complete.")
+    else:
+        print("No plots were created, keeping .txt files for debugging.")
 
 if __name__ == '__main__':
     FlowProject().main()
