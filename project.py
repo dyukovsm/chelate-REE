@@ -11,7 +11,6 @@ Contributors:
 """
 
 from files.python_files import job_tester
-
 import math
 # pyrefly: ignore [missing-import]
 import numpy as np
@@ -702,7 +701,7 @@ def AGGREGATE_FREE_ENERGY(*jobs):
     group_parts.append(str(jobs[0].sp.unNested_usesTemplates))
     group_parts.append(str(jobs[0].sp.charge_mult))
     group_name = "_".join(group_parts)
-    group_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)   # define group_dir
+    group_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
     target_dir = os.path.join(group_dir, "GFE")
     os.makedirs(target_dir, exist_ok=True)
     
@@ -723,7 +722,7 @@ def AGGREGATE_FREE_ENERGY(*jobs):
     with open(output_file, 'a') as f:
         f.write(f"{group_name}: {mbar_val} +/- {mbar_err}\n")
 
-#DeepSeek RDF analysis V3
+
 @FlowProject.pre(job_tester.pro_canon_post)
 @FlowProject.post(job_tester.rdf_calculated)
 @FlowProject.operation(
@@ -735,8 +734,11 @@ def CALCULATE_RDF(job, debug_mode=True):
         group_parts.append(str(job.sp.polypeptide))
     group_parts.append(str(job.sp.replicate))
     group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_parts.append(str(job.sp.charge_mult))
     group_name = "_".join(group_parts)
-    target_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
+    
+    group_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
+    target_dir = os.path.join(group_dir, "rdf")
     os.makedirs(target_dir, exist_ok=True)
     output_file = os.path.join(target_dir, "rdf_analysis.txt")
     
@@ -745,58 +747,55 @@ def CALCULATE_RDF(job, debug_mode=True):
         min_1, max_1, cn_1, min_2, max_2, cn_2, min_3, max_3, cn_3 = result
         sp_str = f"{job.sp.metal}_{job.sp.polypeptide}_{job.sp.replicate} {job.sp.lambda_ELE:>6.4f} {job.sp.lambda_LJ:>6.4f}"
         with open(output_file, 'a') as f:
-            # Write all three shells: min, max, CN per shell
             f.write(f"{job.id}, {min_1:.4f}, {max_1:.4f}, {cn_1:.4f}, "
                     f"{min_2:.4f}, {max_2:.4f}, {cn_2:.4f}, "
                     f"{min_3:.4f}, {max_3:.4f}, {cn_3:.4f}, {sp_str}\n")
         
-        # ---- Summary file for lambda (0,0) with nice formatting ----
-        if job.sp.lambda_ELE == 0.0 and job.sp.lambda_LJ == 0.0:
-            summary_path = os.path.join(names.PROJECT_DIR, "lambda_0_0_rdf_summary.txt")
-            
-            # Column widths (increase as needed)
-            col_widths = {
-                'job_id': 34,
-                'metal': 6,
-                'min_1': 10,
-                'max_1': 10,
-                'cn_1': 10,
-                'min_2': 10,
-                'max_2': 10,
-                'cn_2': 10,
-                'min_3': 10,
-                'max_3': 10,
-                'cn_3': 10,
-            }
-            
-            if not os.path.exists(summary_path):
-                with open(summary_path, 'w') as sf:
-                    header = (f"{'job_id':<{col_widths['job_id']}} "
-                              f"{'metal':<{col_widths['metal']}} "
-                              f"{'min_1':<{col_widths['min_1']}} "
-                              f"{'max_1':<{col_widths['max_1']}} "
-                              f"{'cn_1':<{col_widths['cn_1']}} "
-                              f"{'min_2':<{col_widths['min_2']}} "
-                              f"{'max_2':<{col_widths['max_2']}} "
-                              f"{'cn_2':<{col_widths['cn_2']}} "
-                              f"{'min_3':<{col_widths['min_3']}} "
-                              f"{'max_3':<{col_widths['max_3']}} "
-                              f"{'cn_3':<{col_widths['cn_3']}}")
-                    sf.write(header + "\n")
-            
-            with open(summary_path, 'a') as sf:
-                row = (f"{job.id:<{col_widths['job_id']}} "
-                       f"{job.sp.metal:<{col_widths['metal']}} "
-                       f"{min_1:<{col_widths['min_1']}.4f} "
-                       f"{max_1:<{col_widths['max_1']}.4f} "
-                       f"{cn_1:<{col_widths['cn_1']}.4f} "
-                       f"{min_2:<{col_widths['min_2']}.4f} "
-                       f"{max_2:<{col_widths['max_2']}.4f} "
-                       f"{cn_2:<{col_widths['cn_2']}.4f} "
-                       f"{min_3:<{col_widths['min_3']}.4f} "
-                       f"{max_3:<{col_widths['max_3']}.4f} "
-                       f"{cn_3:<{col_widths['cn_3']}.4f}")
-                sf.write(row + "\n")
+        summary_path = os.path.join(names.PROJECT_DIR, f"lambda_{job.sp.lambda_ELE}_{job.sp.lambda_LJ}_{job.sp.lambda_BONDED}_rdf_summary.txt")
+        
+        col_widths = {
+            'job_id': 34,
+            'metal': 6,
+            'min_1': 10,
+            'max_1': 10,
+            'cn_1': 10,
+            'min_2': 10,
+            'max_2': 10,
+            'cn_2': 10,
+            'min_3': 10,
+            'max_3': 10,
+            'cn_3': 10,
+        }
+        
+        if not os.path.exists(summary_path):
+            with open(summary_path, 'w') as sf:
+                header = (f"{'job_id':<{col_widths['job_id']}} "
+                          f"{'metal':<{col_widths['metal']}} "
+                          f"{'min_1':<{col_widths['min_1']}} "
+                          f"{'max_1':<{col_widths['max_1']}} "
+                          f"{'cn_1':<{col_widths['cn_1']}} "
+                          f"{'min_2':<{col_widths['min_2']}} "
+                          f"{'max_2':<{col_widths['max_2']}} "
+                          f"{'cn_2':<{col_widths['cn_2']}} "
+                          f"{'min_3':<{col_widths['min_3']}} "
+                          f"{'max_3':<{col_widths['max_3']}} "
+                          f"{'cn_3':<{col_widths['cn_3']}}      CHARGE")
+                sf.write(header + "\n")
+        
+        with open(summary_path, 'a') as sf:
+            row = (f"{job.id:<{col_widths['job_id']}} "
+                   f"{job.sp.metal:<{col_widths['metal']}} "
+                   f"{min_1:<{col_widths['min_1']}.4f} "
+                   f"{max_1:<{col_widths['max_1']}.4f} "
+                   f"{cn_1:<{col_widths['cn_1']}.4f} "
+                   f"{min_2:<{col_widths['min_2']}.4f} "
+                   f"{max_2:<{col_widths['max_2']}.4f} "
+                   f"{cn_2:<{col_widths['cn_2']}.4f} "
+                   f"{min_3:<{col_widths['min_3']}.4f} "
+                   f"{max_3:<{col_widths['max_3']}.4f} "
+                   f"{cn_3:<{col_widths['cn_3']}.4f}    {job.sp.charge_mult:<{col_widths['max_1']}.4f}")
+            sf.write(row + "\n")
+
 
 @FlowProject.pre(pro_canon_post)
 @FlowProject.post(distance_data_written)
@@ -807,18 +806,20 @@ def CALCULATE_DISTANCE_TIME(job):
         group_parts.append(str(job.sp.polypeptide))
     group_parts.append(str(job.sp.replicate))
     group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_parts.append(str(job.sp.charge_mult))
     group_name = "_".join(group_parts)
+    
     group_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name)
     target_dir = os.path.join(group_dir, "distance")
     os.makedirs(target_dir, exist_ok=True)
-    calculate_distance_time(job, target_dir)
+    misc_funct.calculate_distance_time(job, target_dir)
 
 
 @FlowProject.pre(distance_data_written)
 @FlowProject.post(distance_time_calculated)
 @FlowProject.operation(
     directives={"np": ANA_CORES, "ngpu": 0, "memory": ANA_MEM, "walltime": MIN_HOURS},
-    aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.replicate, job.sp.unNested_usesTemplates))
+    aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.replicate, job.sp.unNested_usesTemplates, job.sp.charge_mult))
 )
 def AGGREGATE_DISTANCE_TIME(*jobs):
     import glob
@@ -829,12 +830,13 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
     from matplotlib.cm import ScalarMappable
 
     first_job = jobs[0]
-    group_parts = [
-        str(first_job.sp.metal),
-        str(first_job.sp.polypeptide) if getattr(first_job.sp, 'polypeptide', None) else 'None',
-        str(first_job.sp.replicate),
-        str(first_job.sp.unNested_usesTemplates)
-    ]
+    group_parts = [str(first_job.sp.metal)]
+    if getattr(first_job.sp, 'polypeptide', None):
+        group_parts.append(str(first_job.sp.polypeptide))
+    group_parts.append(str(first_job.sp.replicate))
+    group_parts.append(str(first_job.sp.unNested_usesTemplates))
+    group_parts.append(str(first_job.sp.charge_mult))
+    
     group_name = "_".join(group_parts)
     distance_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "distance")
     os.makedirs(distance_dir, exist_ok=True)
@@ -854,7 +856,6 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
             print(f"  Error reading {fpath}: {e}")
             return None, None
 
-    # Collect per‑atom data (CA and O_coord)
     atom_files = glob.glob(os.path.join(distance_dir, "distance_*_serial*_lam*.txt"))
     print(f"Found {len(atom_files)} per‑atom data files")
     atom_data = {}
@@ -862,8 +863,7 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
     for fpath in atom_files:
         base = os.path.basename(fpath)
         parts = base.split('_')
-        # label is everything between 'distance' and 'serial'
-        label = '_'.join(parts[1:-2])   # e.g., 'CA' or 'O_coord'
+        label = '_'.join(parts[1:-2])
         serial = None
         lambda_idx = None
         for part in parts:
@@ -880,13 +880,8 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
         if time is None:
             continue
         atom_data.setdefault((label, serial), []).append((lambda_idx, time, dist))
-        print(f"  Added {label} serial {serial} lambda {lambda_idx}")
 
-    print(f"Collected {len(atom_data)} atom types/serials with data")
-
-    # Collect OHN mean data
     ohn_files = glob.glob(os.path.join(distance_dir, "distance_OHN_lam*.txt"))
-    print(f"Found {len(ohn_files)} OHN data files")
     ohn_data = []
     for fpath in ohn_files:
         base = os.path.basename(fpath)
@@ -903,17 +898,15 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
         if time is None:
             continue
         ohn_data.append((lambda_idx, time, dist))
-        print(f"  Added OHN lambda {lambda_idx}")
-
-    print(f"Collected {len(ohn_data)} OHN lambdas with data")
 
     if not atom_data and not ohn_data:
         print(f"WARNING: No data found for group {group_name}. No plots created.")
         return
 
     plots_created = False
+    cmap = plt.get_cmap('plasma')
+    
     if atom_data:
-        cmap = plt.get_cmap('plasma')
         for (label, serial), data_list in atom_data.items():
             data_list.sort(key=lambda x: x[0])
             lambdas = [d[0] for d in data_list]
@@ -941,7 +934,6 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
             out_file = os.path.join(distance_dir, f"overlay_{label}_serial{serial}.png")
             plt.savefig(out_file, dpi=300, bbox_inches='tight')
             plt.close(fig)
-            print(f"Overlay saved: {out_file}")
             plots_created = True
 
     if ohn_data:
@@ -971,7 +963,6 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
         out_file = os.path.join(distance_dir, "overlay_OHN.png")
         plt.savefig(out_file, dpi=300, bbox_inches='tight')
         plt.close(fig)
-        print(f"Overlay saved: {out_file}")
         plots_created = True
 
     if plots_created:
@@ -979,12 +970,8 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
         for f in glob.glob(os.path.join(distance_dir, "*.txt")):
             try:
                 os.remove(f)
-                print(f"  Removed {f}")
             except Exception as e:
                 print(f"  Could not remove {f}: {e}")
-        print("Cleanup complete.")
-    else:
-        print("No plots were created, keeping .txt files for debugging.")
 
 if __name__ == '__main__':
     FlowProject().main()

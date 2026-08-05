@@ -287,6 +287,46 @@ def rdf_calculated(job):
             return True
     return False
 
+def aggregated_data_present(*jobs):
+    test_passed = False
+    group_parts = [str(jobs[0].sp.metal)]
+    if getattr(jobs[0].sp, 'polypeptide', None):
+        group_parts.append(str(jobs[0].sp.polypeptide))
+    group_parts.append(str(jobs[0].sp.replicate))
+    group_parts.append(str(jobs[0].sp.unNested_usesTemplates))
+    group_parts.append(str(jobs[0].sp.charge_mult))
+    group_name = "_".join(group_parts)
+    target_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "GFE")
+    output_file = os.path.join(names.PROJECT_DIR, "aggregated_free_energy.txt")
+    
+    if os.path.exists(target_dir):
+        if os.path.exists(os.path.join(target_dir, f"{names.GENERAL_FILE_PREFIX}.txt")):
+            if os.path.exists(output_file):
+                with open(output_file, 'r') as f:
+                    if group_name in f.read():
+                        test_passed = True
+    return test_passed
+
+@FlowProject.label
+def rdf_calculated(job):
+    group_parts = [str(job.sp.metal)]
+    if getattr(job.sp, 'polypeptide', None):
+        group_parts.append(str(job.sp.polypeptide))
+    group_parts.append(str(job.sp.replicate))
+    group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_parts.append(str(job.sp.charge_mult))
+    group_name = "_".join(group_parts)
+    target_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "rdf")
+    output_file = os.path.join(target_dir, "rdf_analysis.txt")
+    
+    if not os.path.exists(output_file):
+        return False
+    with open(output_file, 'r') as f:
+        contents = f.read()
+        if job.id in contents:
+            return True
+    return False
+
 @FlowProject.label
 def distance_data_written(*jobs):
     if not jobs:
@@ -302,6 +342,7 @@ def distance_data_written(*jobs):
             group_parts.append(str(job.sp.polypeptide))
         group_parts.append(str(job.sp.replicate))
         group_parts.append(str(job.sp.unNested_usesTemplates))
+        group_parts.append(str(job.sp.charge_mult))
         group_name = "_".join(group_parts)
         distance_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "distance")
         marker = os.path.join(distance_dir, f"distance_data_{lambda_str}.done")
@@ -319,16 +360,10 @@ def distance_time_calculated(*jobs):
         group_parts.append(str(job.sp.polypeptide))
     group_parts.append(str(job.sp.replicate))
     group_parts.append(str(job.sp.unNested_usesTemplates))
+    group_parts.append(str(job.sp.charge_mult))
     group_name = "_".join(group_parts)
     distance_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "distance")
-    # Check for at least one CA overlay, one O_coord overlay, and OHN overlay
     ca_overlays = glob.glob(os.path.join(distance_dir, "overlay_CA_serial*.png"))
     o_overlays = glob.glob(os.path.join(distance_dir, "overlay_O_coord_serial*.png"))
     ohn_overlay = os.path.isfile(os.path.join(distance_dir, "overlay_OHN.png"))
-    # Require all three types to be present (if there are no CA or O atoms, we need to handle gracefully)
-    # For robustness, we only require that if there is data for a type, its overlay exists.
-    # But for simplicity, we'll just check that at least one overlay exists.
-    # However, to avoid false positives, we'll check that we have at least one CA overlay (if CA data exists)
-    # and at least one O_coord overlay (if O_coord data exists). We'll rely on the aggregation to create them.
-    # A simple check: if any overlay exists, return True.
     return (len(ca_overlays) > 0) or (len(o_overlays) > 0) or ohn_overlay
