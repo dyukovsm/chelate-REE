@@ -1008,3 +1008,129 @@ def calculate_distance_time(job, target_dir):
             f.write("Data written successfully\n")
 
         return
+
+# ==============================================================================
+# RESTRAINT OXYGEN MAPPINGS PER POLYPEPTIDE
+# ==============================================================================
+POLYPEPTIDE_RESTRAINT_MAP = {
+    "LBT5-": {
+        "bond_oxygens": [119],
+        "angle_oxygens": [202, 203], #[75, 202, 203],
+        "dihedral_set1": [49, 50, 103, 104],
+        "dihedral_set2": [168, 169],
+    },
+    "LBT3-": {
+        "bond_oxygens": [],
+        "angle_oxygens": [],
+        "dihedral_set1": [],
+        "dihedral_set2": [],
+    }
+}
+
+
+def calculate_restraint_oxygen_distances(job, target_dir):
+    """
+    Computes time-series distances from dynamically detected metal ion to each 
+    restraint oxygen across EQ_CANON + PRO_CANON trajectories.
+    """
+    import mdtraj as md
+    import numpy as np
+    import os
+
+    polypeptide = getattr(job.sp, 'polypeptide', None)
+    if polypeptide not in POLYPEPTIDE_RESTRAINT_MAP:
+        return
+
+    mapping = POLYPEPTIDE_RESTRAINT_MAP[polypeptide]
+    
+    # Lambda filter (Include 0.0 for test run, or expand to [0.0, 0.25, 0.5, 0.75, 0.9])
+    bonded = round(job.sp.lambda_BONDED, 5)
+    ele = round(job.sp.lambda_ELE, 5)
+    lj = round(job.sp.lambda_LJ, 5)
+    
+    target_eles = [0.0]  # Set to [0.0, 0.25, 0.5, 0.75, 0.9] for full runs
+    if bonded != 1.0 or lj != 0.0 or not any(np.isclose(ele, t, atol=1e-4) for t in target_eles):
+        return
+
+    lambda_idx = names.eleLam_ljLam_to_initLam[(bonded, ele, lj)]
+    lambda_str = f"lam{lambda_idx:02d}"
+
+    with job:
+        top_file = f'{names.NAME_PRO_CANON}.gro'
+        if not os.path.exists(top_file):
+            top_file = 'init.gro'
+        if not os.path.exists(top_file):
+            return
+
+        traj_files = [
+            f'{names.NAME_EQ_CANON}.trr',
+            f'{names.NAME_PRO_CANON}.trr'
+        ]
+
+        all_xyz, all_time, all_box = [], [], []
+        last_time = 0.0
+        pro_canon_start = None
+
+        for i, fname in enumerate(traj_files):
+            if not os.path.exists(fname):
+                continue
+            try:
+                seg = md.load(fname, top=top_file)
+                if seg.n_frames == 0:
+                    continue
+                t = seg.time
+                dt = t[1] - t[0] if len(t) > 1 else 0.001
+                offset = 0.0 if i == 0 else last_time + dt - t[0]
+                t_shifted = t + offset
+                last_time = t_shifted[-1]
+                all_xyz.append(seg.xyz)
+                all_time.append(t_shifted)
+                all_box.append(seg.unitcell_vectors)
+                if fname == f'{names.NAME_PRO_CANON}.trr':
+                    pro_canon_start = t_shifted[0]
+            except Exception as e:
+                print(f"Error loading {fname} in job {job.id}: {e}")
+                continue
+
+        if not all_xyz:
+            return
+
+        if pro_canon_start is not None:
+            with open(os.path.join(target_dir, f"pro_canon_start_time_{lambda_str}.txt"), 'w') as f:
+                f.write(f"{pro_canon_start}\n")
+
+        xyz = np.concatenate(all_xyz, axis=0)
+        time = np.concatenate(all_time, axis=0)
+        box = np.concatenate(all_box, axis=0)
+
+        ref_seg = md.load(traj_files[0], top=top_file)
+        traj = md.Trajectory(xyz, ref_seg.topology, time=time)
+        traj.unitcell_vectors = box
+
+        metal_name = job.sp.metal
+        ion_sel = traj.topology.select(f"name {metal_name} or resname {metal_name} or element {metal_name}")
+        if len(ion_sel) == 0:
+            return
+        ion_idx = ion_sel[0]
+
+        all_o_serials = (
+            mapping["bond_oxygens"] +
+            mapping["angle_oxygens"] +
+            mapping["dihedral_set1"] +
+            mapping["dihedral_set2"]
+        )
+
+        for serial in all_o_serials:
+            idx = serial - 1
+            dists = md.compute_distances(traj, [[ion_idx, idx]], periodic=True)[:, 0]
+            
+            np.savetxt(
+                os.path.join(target_dir, f"restraint_O_serial{serial}_{lambda_str}.txt"),
+                np.column_stack((time, dists)),
+                header="time(ps)\tdistance(nm)",
+                comments=''
+            )
+
+        marker_file = os.path.join(target_dir, f"restraint_oxygens_{lambda_str}.done")
+        with open(marker_file, 'w') as f:
+            f.write("Data written successfully\n")

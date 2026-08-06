@@ -367,3 +367,83 @@ def distance_time_calculated(*jobs):
     o_overlays = glob.glob(os.path.join(distance_dir, "overlay_O_coord_serial*.png"))
     ohn_overlay = os.path.isfile(os.path.join(distance_dir, "overlay_OHN.png"))
     return (len(ca_overlays) > 0) or (len(o_overlays) > 0) or ohn_overlay
+
+@FlowProject.label
+def restraint_oxygen_data_written(*jobs):
+    if not jobs:
+        return False
+    for job in jobs:
+        bonded = round(job.sp.lambda_BONDED, 5)
+        ele = round(job.sp.lambda_ELE, 5)
+        lj = round(job.sp.lambda_LJ, 5)
+        
+        if bonded == 1.0 and lj == 0.0 and ele in [0.0, 0.25, 0.5, 0.75, 0.9]:
+            lambda_idx = names.eleLam_ljLam_to_initLam[(bonded, ele, lj)]
+            lambda_str = f"lam{lambda_idx:02d}"
+            group_parts = [
+                str(job.sp.metal),
+                str(job.sp.polypeptide) if getattr(job.sp, 'polypeptide', None) else 'None',
+                str(job.sp.replicate),
+                str(job.sp.unNested_usesTemplates),
+                str(job.sp.charge_mult)
+            ]
+            group_name = "_".join(group_parts)
+            restraint_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "restraint_oxygens")
+            marker = os.path.join(restraint_dir, f"restraint_oxygens_{lambda_str}.done")
+            if not os.path.exists(marker):
+                return False
+    return True
+
+
+@FlowProject.label
+def restraint_oxygen_data_written(*jobs):
+    if not jobs:
+        return False
+    for job in jobs:
+        bonded = round(job.sp.lambda_BONDED, 5)
+        ele = round(job.sp.lambda_ELE, 5)
+        lj = round(job.sp.lambda_LJ, 5)
+        
+        target_eles = [0.0]  # Match target_eles in misc_funct.py
+        if bonded == 1.0 and lj == 0.0 and any(np.isclose(ele, t, atol=1e-4) for t in target_eles):
+            lambda_idx = names.eleLam_ljLam_to_initLam[(bonded, ele, lj)]
+            lambda_str = f"lam{lambda_idx:02d}"
+            group_parts = [
+                str(job.sp.metal),
+                str(job.sp.polypeptide) if getattr(job.sp, 'polypeptide', None) else 'None',
+                str(job.sp.replicate),
+                str(job.sp.unNested_usesTemplates),
+                str(job.sp.charge_mult)
+            ]
+            group_name = "_".join(group_parts)
+            restraint_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "restraint_oxygens")
+            marker = os.path.join(restraint_dir, f"restraint_oxygens_{lambda_str}.done")
+            if not os.path.exists(marker):
+                return False
+    return True
+
+
+@FlowProject.label
+def restraint_oxygen_plots_created(*jobs):
+    if not jobs:
+        return False
+    for job in jobs:
+        bonded = round(job.sp.lambda_BONDED, 5)
+        ele = round(job.sp.lambda_ELE, 5)
+        lj = round(job.sp.lambda_LJ, 5)
+        
+        target_eles = [0.0]
+        if bonded == 1.0 and lj == 0.0 and any(np.isclose(ele, t, atol=1e-4) for t in target_eles):
+            group_parts = [
+                str(job.sp.metal),
+                str(job.sp.polypeptide) if getattr(job.sp, 'polypeptide', None) else 'None',
+                str(job.sp.replicate),
+                str(job.sp.unNested_usesTemplates),
+                str(job.sp.charge_mult)
+            ]
+            group_name = "_".join(group_parts)
+            restraint_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "restraint_oxygens")
+            overlays = glob.glob(os.path.join(restraint_dir, "overlay_*.png"))
+            if len(overlays) == 0:
+                return False
+    return True

@@ -932,7 +932,7 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
             ax.grid(True, alpha=0.3)
             ax.legend()
             out_file = os.path.join(distance_dir, f"overlay_{label}_serial{serial}.png")
-            plt.savefig(out_file, dpi=300, bbox_inches='tight')
+            plt.savefig(out_file, dpi=1000, bbox_inches='tight')
             plt.close(fig)
             plots_created = True
 
@@ -961,7 +961,7 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
         ax.grid(True, alpha=0.3)
         ax.legend()
         out_file = os.path.join(distance_dir, "overlay_OHN.png")
-        plt.savefig(out_file, dpi=300, bbox_inches='tight')
+        plt.savefig(out_file, dpi=1000, bbox_inches='tight')
         plt.close(fig)
         plots_created = True
 
@@ -972,6 +972,294 @@ def AGGREGATE_DISTANCE_TIME(*jobs):
                 os.remove(f)
             except Exception as e:
                 print(f"  Could not remove {f}: {e}")
+
+# ==============================================================================
+# RESTRAINT OXYGEN SUMMARY CONFIGURATION
+# ==============================================================================
+SUMMARY_CONFIG = {
+    "target_oxygens": [168 , 202 , 203 , 119 , 49 , 50 , 169 , 103 , 104],          # For individual oxygen vs charge plots       LBT5-   168 , 202 , 203 , 119 , 49 , 50 , 169 , 103 , 104 , 75
+    "target_lambda_ele": [0.0],  # ELE lambdas to generate summary plots for
+}
+
+# ==============================================================================
+# 1. PER-JOB DISTANCE CALCULATION OPERATION
+# ==============================================================================
+@FlowProject.pre(pro_canon_post)
+@FlowProject.post(job_tester.restraint_oxygen_data_written)
+@FlowProject.operation(directives={"np": ANA_CORES, "ngpu": 0, "memory": ANA_MEM, "walltime": MIN_HOURS})
+def CALCULATE_RESTRAINT_OXYGEN_DISTANCES(job):
+    group_parts = [
+        str(job.sp.metal),
+        str(job.sp.polypeptide) if getattr(job.sp, 'polypeptide', None) else 'None',
+        str(job.sp.replicate),
+        str(job.sp.unNested_usesTemplates),
+        str(job.sp.charge_mult)
+    ]
+    group_name = "_".join(group_parts)
+    target_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "restraint_oxygens")
+    os.makedirs(target_dir, exist_ok=True)
+    misc_funct.calculate_restraint_oxygen_distances(job, target_dir)
+
+@FlowProject.pre(job_tester.restraint_oxygen_data_written)
+@FlowProject.post(job_tester.restraint_oxygen_plots_created)
+@FlowProject.operation(
+    directives={"np": ANA_CORES, "ngpu": 0, "memory": ANA_MEM, "walltime": MIN_HOURS},
+    aggregator=aggregator.groupby(key=lambda job: (job.sp.metal, job.sp.polypeptide, job.sp.replicate, job.sp.unNested_usesTemplates))
+)
+def AGGREGATE_RESTRAINT_OXYGEN_PLOTS(*jobs):
+    import glob
+    import re
+    import os
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import Normalize
+    from matplotlib.cm import ScalarMappable
+
+    # Set universal font size
+    plt.rcParams.update({
+        'font.size': 16,
+        'axes.labelsize': 16,
+        'axes.titlesize': 16,
+        'xtick.labelsize': 16,
+        'ytick.labelsize': 16,
+        'legend.fontsize': 16
+    })
+
+    first_job = jobs[0]
+    polypeptide = getattr(first_job.sp, 'polypeptide', None)
+    if polypeptide not in misc_funct.POLYPEPTIDE_RESTRAINT_MAP:
+        return
+
+    mapping = misc_funct.POLYPEPTIDE_RESTRAINT_MAP[polypeptide]
+    cmap = plt.get_cmap('plasma')
+
+    charge_mults = sorted(list({job.sp.charge_mult for job in jobs}))
+
+    # --------------------------------------------------------------------------
+    # 1. TIME-SERIES OVERLAY PLOTS FOR EACH CHARGE_MULT
+    # --------------------------------------------------------------------------
+    for charge in charge_mults:
+        group_parts = [
+            str(first_job.sp.metal),
+            str(polypeptide),
+            str(first_job.sp.replicate),
+            str(first_job.sp.unNested_usesTemplates),
+            str(charge)
+        ]
+        group_name = "_".join(group_parts)
+        restraint_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, group_name, "restraint_oxygens")
+
+        if not os.path.exists(restraint_dir):
+            continue
+
+        categories = {
+            "bond_oxygens": ("Plot 1: Bond Restraint Oxygens", mapping["bond_oxygens"]),
+            "angle_oxygens": ("Plot 2: Angle Restraint Oxygens", mapping["angle_oxygens"]),
+            "dihedral_set1": ("Plot 3: Dihedral Restraint Oxygens (Set 1)", mapping["dihedral_set1"]),
+            "dihedral_set2": ("Plot 4: Dihedral Restraint Oxygens (Set 2)", mapping["dihedral_set2"])
+        }
+
+        for cat_key, (cat_title, o_serials) in categories.items():
+            if not o_serials:
+                continue
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            has_data = False
+
+            for serial in o_serials:
+                files = glob.glob(os.path.join(restraint_dir, f"restraint_O_serial{serial}_lam*.txt"))
+                
+                file_data = []
+                for fpath in files:
+                    m = re.search(r'lam(\d+)', fpath)
+                    if m:
+                        lam_idx = int(m.group(1))
+                        file_data.append((lam_idx, fpath))
+                
+                file_data.sort(key=lambda x: x[0])
+                if not file_data:
+                    continue
+
+                lambdas = [d[0] for d in file_data]
+                norm = Normalize(vmin=min(lambdas), vmax=max(lambdas))
+
+                for lam_idx, fpath in file_data:
+                    df = pd.read_csv(fpath, sep=r'\s+', header=None, skiprows=1, names=['time', 'dist'])
+                    ax.plot(df['time'], df['dist'], color=cmap(norm(lam_idx)), alpha=0.7, linewidth=1.2)
+                    has_data = True
+
+                start_file = os.path.join(restraint_dir, f"pro_canon_start_time_lam{file_data[0][0]:02d}.txt")
+                if os.path.exists(start_file):
+                    with open(start_file, 'r') as sf:
+                        st_time = float(sf.read().strip())
+                    ax.axvline(x=st_time, color='black', linestyle='--', linewidth=1.5, label='PRO_CANON Start')
+
+            if has_data:
+                sm = ScalarMappable(norm=norm, cmap=cmap)
+                sm.set_array([])
+                cbar = plt.colorbar(sm, ax=ax)
+                cbar.set_label('λ-index')
+                ax.set_xlabel('Time (ps)')
+                ax.set_ylabel('Mean Distance (nm)')
+                ax.set_title(f'{group_name} – {cat_title}')
+                ax.grid(False)  # Aesthetic: No grid lines
+                out_png = os.path.join(restraint_dir, f"overlay_{cat_key}.png")
+                plt.savefig(out_png, dpi=1000, bbox_inches='tight')
+                plt.close(fig)
+
+    # --------------------------------------------------------------------------
+    # 2. INDIVIDUAL OXYGEN SUMMARY PLOTS (charge_mult vs Distance)
+    # --------------------------------------------------------------------------
+    target_oxygens = SUMMARY_CONFIG["target_oxygens"]
+    target_lambdas_ele = SUMMARY_CONFIG["target_lambda_ele"]
+
+    summary_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, f"{first_job.sp.metal}_{polypeptide}_summary_restraints")
+    os.makedirs(summary_dir, exist_ok=True)
+
+    for serial in target_oxygens:
+        for target_ele in target_lambdas_ele:
+            charge_list, mean_dists, std_dists = [], [], []
+
+            for charge in charge_mults:
+                matching_jobs = [
+                    j for j in jobs 
+                    if j.sp.charge_mult == charge 
+                    and round(j.sp.lambda_BONDED, 5) == 1.0 
+                    and round(j.sp.lambda_ELE, 5) == target_ele 
+                    and round(j.sp.lambda_LJ, 5) == 0.0
+                ]
+                if not matching_jobs:
+                    continue
+                
+                target_job = matching_jobs[0]
+                lam_idx = names.eleLam_ljLam_to_initLam[(1.0, target_ele, 0.0)]
+                lam_str = f"lam{lam_idx:02d}"
+
+                group_parts = [
+                    str(target_job.sp.metal), str(polypeptide),
+                    str(target_job.sp.replicate), str(target_job.sp.unNested_usesTemplates),
+                    str(charge)
+                ]
+                r_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, "_".join(group_parts), "restraint_oxygens")
+                
+                fpath = os.path.join(r_dir, f"restraint_O_serial{serial}_{lam_str}.txt")
+                start_f = os.path.join(r_dir, f"pro_canon_start_time_{lam_str}.txt")
+
+                if os.path.exists(fpath) and os.path.exists(start_f):
+                    with open(start_f, 'r') as sf:
+                        pro_start = float(sf.read().strip())
+                    
+                    df = pd.read_csv(fpath, sep=r'\s+', header=None, skiprows=1, names=['time', 'dist'])
+                    pro_df = df[df['time'] >= pro_start]
+                    
+                    if len(pro_df) > 0:
+                        charge_list.append(charge)
+                        mean_dists.append(pro_df['dist'].mean())
+                        std_dists.append(pro_df['dist'].std())
+
+            if charge_list:
+                fig, ax = plt.subplots(figsize=(8, 5))
+                ax.errorbar(charge_list, mean_dists, yerr=std_dists, fmt='-o', capsize=5, color='tab:blue', ecolor='tab:red', linewidth=2)
+                ax.set_xlabel(r'$q/q_{0}$')
+                ax.set_ylabel('Mean Distance (nm)')
+                ax.set_title(f'Oxygen {serial} Distance vs Charge (λ_ELE = {target_ele})')
+                ax.grid(False)  # Aesthetic: No grid lines
+                
+                summary_plot = os.path.join(summary_dir, f"summary_charge_vs_dist_O{serial}_ele{target_ele}.png")
+                plt.savefig(summary_plot, dpi=1000, bbox_inches='tight')
+                plt.close(fig)
+
+    # --------------------------------------------------------------------------
+    # 3. NEW: ALL OXYGENS SUMMARY PLOT PER LAMBDA STATE (No error bars, gradient colors)
+    # --------------------------------------------------------------------------
+    all_oxygens = (
+        mapping["bond_oxygens"] + 
+        mapping["angle_oxygens"] + 
+        mapping["dihedral_set1"] + 
+        mapping["dihedral_set2"]
+    )
+
+    # Group-based color gradient mapping
+    def get_oxygen_color(serial):
+        if serial in mapping["bond_oxygens"]:
+            return plt.cm.Blues(0.8)
+        elif serial in mapping["angle_oxygens"]:
+            idx = mapping["angle_oxygens"].index(serial)
+            return plt.cm.Greens(0.5 + 0.2 * idx)
+        elif serial in mapping["dihedral_set1"]:
+            idx = mapping["dihedral_set1"].index(serial)
+            return plt.cm.Oranges(0.4 + 0.15 * idx)
+        elif serial in mapping["dihedral_set2"]:
+            idx = mapping["dihedral_set2"].index(serial)
+            return plt.cm.Purples(0.6 + 0.2 * idx)
+        return 'tab:grey'
+
+    for target_ele in target_lambdas_ele:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        has_any_data = False
+
+        for serial in all_oxygens:
+            charge_list, mean_dists = [], []
+
+            for charge in charge_mults:
+                matching_jobs = [
+                    j for j in jobs 
+                    if j.sp.charge_mult == charge 
+                    and round(j.sp.lambda_BONDED, 5) == 1.0 
+                    and round(j.sp.lambda_ELE, 5) == target_ele 
+                    and round(j.sp.lambda_LJ, 5) == 0.0
+                ]
+                if not matching_jobs:
+                    continue
+                
+                target_job = matching_jobs[0]
+                lam_idx = names.eleLam_ljLam_to_initLam[(1.0, target_ele, 0.0)]
+                lam_str = f"lam{lam_idx:02d}"
+
+                group_parts = [
+                    str(target_job.sp.metal), str(polypeptide),
+                    str(target_job.sp.replicate), str(target_job.sp.unNested_usesTemplates),
+                    str(charge)
+                ]
+                r_dir = os.path.join(names.PROJECT_DIR, names.ANALYSIS_DIR_PREFIX, "_".join(group_parts), "restraint_oxygens")
+                
+                fpath = os.path.join(r_dir, f"restraint_O_serial{serial}_{lam_str}.txt")
+                start_f = os.path.join(r_dir, f"pro_canon_start_time_{lam_str}.txt")
+
+                if os.path.exists(fpath) and os.path.exists(start_f):
+                    with open(start_f, 'r') as sf:
+                        pro_start = float(sf.read().strip())
+                    
+                    df = pd.read_csv(fpath, sep=r'\s+', header=None, skiprows=1, names=['time', 'dist'])
+                    pro_df = df[df['time'] >= pro_start]
+                    
+                    if len(pro_df) > 0:
+                        charge_list.append(charge)
+                        mean_dists.append(pro_df['dist'].mean())
+
+            if charge_list:
+                line_color = get_oxygen_color(serial)
+                ax.plot(charge_list, mean_dists, '-o', linewidth=2, markersize=6, 
+                        color=line_color, label=f'O{serial}')
+                has_any_data = True
+
+        if has_any_data:
+            ax.set_xlabel(r'$q/q_{0}$')
+            ax.set_ylabel('Mean Distance (nm)')
+            #ax.set_title(f'All Restraint Oxygens vs Charge (λ_ELE = {target_ele})')
+            ax.grid(False)  # Aesthetic: No grid lines
+            #ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+            
+            #ax.set_xticks([0.2, 0.5, 0.9], ['0.2', '0.5', '0.9'])
+            #ax.set_yticks([0.19, 0.22, 0.25], ['0.19', '0.22', '0.25'])
+            all_ox_plot = os.path.join(summary_dir, f"summary_all_oxygens_ele{target_ele}.png")
+            plt.ylim(0.185, 0.40125)
+            plt.savefig(all_ox_plot, dpi=1000, bbox_inches='tight')
+            all_ox_plot = os.path.join(summary_dir, f"summary_all_oxygens_ele{target_ele}_0to3.png")
+            plt.ylim(0.185, 0.4025)
+            plt.savefig(all_ox_plot, dpi=1000, bbox_inches='tight')
+            plt.close(fig)
 
 if __name__ == '__main__':
     FlowProject().main()
