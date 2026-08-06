@@ -2,7 +2,7 @@
 """
 Plot coordination number vs. distance for each metal ion in the 000000_analysis folder.
 Uses the legend.txt file to map job IDs to state point parameters.
-Now uses relative paths and has a fixed y‑axis limit.
+Now with 1000 dpi and horizontal colourbars (inset retained).
 """
 
 import os
@@ -68,7 +68,6 @@ def parse_legend(legend_path):
 def get_rainbow_color(ele):
     """Map lambda_ELE (0..1) to a rainbow colour (red->violet)."""
     ele = min(1.0, max(0.0, ele))
-    # Custom colour assignment – keep as you have it
     if ele == 0.9:
         return (np.float64(1.0), np.float64(0.0), np.float64(0.0), np.float64(1.0))
     elif ele == 0.8:
@@ -93,7 +92,7 @@ def get_dash_offset(value, max_offset=9):
 
 # ----------------------------------------------------------------------
 def plot_metal(metal, entries, base_dir):
-    subdir_name = f"{metal}_LBT5-_0_False"
+    subdir_name = f"{metal}_DUM3+_0_False"
     subdir_path = os.path.join(base_dir, subdir_name)
     if not os.path.isdir(subdir_path):
         print(f"Subdirectory {subdir_path} not found, skipping {metal}")
@@ -107,7 +106,7 @@ def plot_metal(metal, entries, base_dir):
         fname = f"{job_id}_debug_rdf.txt"
         fpath = os.path.join(subdir_path, fname)
         if not os.path.isfile(fpath):
-            print(f"File {fpath} not found, skipping job {job_id}")
+            # print(f"File {fpath} not found, skipping job {job_id}")
             continue
 
         try:
@@ -140,11 +139,12 @@ def plot_metal(metal, entries, base_dir):
 
     # ---- Main plot limits ----
     ax.set_xlim(0, 1.2)
-    ax.set_ylim(0, 10)   # fixed upper limit – adjust if needed
+    ax.set_ylim(0, 10)
 
     # ---- Create inset if data exists ----
     if mini_data:
         mini_data.sort(key=lambda x: x[0])
+        # Inset position: adjust if needed to avoid overlap with colourbars
         axins = ax.inset_axes([0.70, 0.10, 0.25, 0.25])
 
         for bonded, r, cn in mini_data:
@@ -158,25 +158,27 @@ def plot_metal(metal, entries, base_dir):
         axins.set_xlabel('r (nm)', fontsize=8)
         axins.set_ylabel('CN', fontsize=8)
         axins.tick_params(labelsize=7)
-        # Legend removed
     else:
         print(f"No bonded-only data found for {metal}, skipping inset.")
 
-    # ---- Add colorbars ----
-    plt.subplots_adjust(right=0.7)
+    # ---- Adjust layout to make room for horizontal colourbars ----
+    plt.subplots_adjust(bottom=0.25)
 
+    # ---- Horizontal colourbars ----
+    # First: λ_ELE
     norm_ele = Normalize(vmin=0, vmax=1)
     sm_ele = ScalarMappable(norm=norm_ele, cmap=cmap_rainbow)
     sm_ele.set_array([])
-    cax1 = fig.add_axes([0.75, 0.2, 0.02, 0.6])
-    cbar1 = fig.colorbar(sm_ele, cax=cax1, orientation='vertical')
+    cax1 = fig.add_axes([0.15, 0.12, 0.35, 0.03])  # [left, bottom, width, height]
+    cbar1 = fig.colorbar(sm_ele, cax=cax1, orientation='horizontal')
     cbar1.set_label('λ_ELE (bonded=1, LJ=0)', fontsize=10)
 
+    # Second: λ_LJ
     norm_lj = Normalize(vmin=0, vmax=1)
     sm_lj = ScalarMappable(norm=norm_lj, cmap=cmap_cyan_purple_black)
     sm_lj.set_array([])
-    cax2 = fig.add_axes([0.85, 0.2, 0.02, 0.6])
-    cbar2 = fig.colorbar(sm_lj, cax=cax2, orientation='vertical')
+    cax2 = fig.add_axes([0.55, 0.12, 0.35, 0.03])
+    cbar2 = fig.colorbar(sm_lj, cax=cax2, orientation='horizontal')
     cbar2.set_label('λ_LJ (bonded=1, ELE=1)', fontsize=10)
 
     # ---- Main axes labels and title ----
@@ -185,11 +187,11 @@ def plot_metal(metal, entries, base_dir):
     ax.set_title(f'{metal} – Coordination Number vs. Distance', fontsize=14)
     ax.grid(alpha=0.0)
 
-    # Save the figure
-    out_file = os.path.join(subdir_path, f"{metal}_coord_vs_r.png")
-    plt.savefig(out_file, dpi=400, bbox_inches='tight')
+    # Save at 1000 dpi
+    out_file = os.path.join(subdir_path, f"{metal}_coord_vs_r_improved.png")
+    plt.savefig(out_file, dpi=1000, bbox_inches='tight')
     plt.close(fig)
-    print(f"Saved plot for {metal} to {out_file}")
+    print(f"Saved plot for {metal} to {out_file} (1000 dpi, horizontal colourbars)")
 
 # ----------------------------------------------------------------------
 def main():
